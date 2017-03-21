@@ -91,13 +91,16 @@ public class Datasets extends AbstractApiBean {
     
     private static final String PERSISTENT_ID_KEY=":persistentId";
     
-    @Inject DataverseSession session;    
+    @Inject DataverseSession session;
 
     @EJB
     DatasetServiceBean datasetService;
 
     @EJB
     DOIEZIdServiceBean doiEZIdServiceBean;
+
+    @EJB
+    DataverseServiceBean dataverseService;
 
     @EJB
     DDIExportServiceBean ddiExportService;
@@ -116,7 +119,7 @@ public class Datasets extends AbstractApiBean {
     
     @EJB
     DataFileServiceBean fileService;
-    
+
     @EJB
     DatasetVersionServiceBean datasetVersionService;
 
@@ -125,7 +128,7 @@ public class Datasets extends AbstractApiBean {
 
     @EJB
     EjbDataverseEngine commandEngine;
-     
+
     /**
      * Used to consolidate the way we parse and handle dataset versions.
      * @param <T> 
@@ -244,7 +247,7 @@ public class Datasets extends AbstractApiBean {
 	@GET
 	@Path("{id}/versions")
     public Response listVersions( @PathParam("id") String id ) {
-        return allowCors(response( req -> 
+        return allowCors(response( req ->
              ok( execCommand( new ListVersionsCommand(req, findDatasetOrDie(id)) )
                                 .stream()
                                 .map( d -> json(d) )
@@ -255,7 +258,7 @@ public class Datasets extends AbstractApiBean {
 	@Path("{id}/versions/{versionId}")
     public Response getVersion( @PathParam("id") String datasetId, @PathParam("versionId") String versionId) {
         return allowCors(response( req -> {
-            DatasetVersion dsv = getDatasetVersionOrDie(req, versionId, findDatasetOrDie(datasetId));            
+            DatasetVersion dsv = getDatasetVersionOrDie(req, versionId, findDatasetOrDie(datasetId));
             return (dsv == null || dsv.getId() == null) ? notFound("Dataset version not found")
                                                         : ok(json(dsv));
         }));
@@ -520,7 +523,7 @@ public class Datasets extends AbstractApiBean {
     @GET
     @Path("{identifier}/assignments")
     public Response getAssignments(@PathParam("identifier") String id) {
-        return response( req -> 
+        return response( req ->
             ok( execCommand(
                        new ListRoleAssignments(req, findDatasetOrDie(id)))
                      .stream().map(ra->json(ra)).collect(toJsonArray())) );
@@ -531,7 +534,7 @@ public class Datasets extends AbstractApiBean {
     public Response getPrivateUrlData(@PathParam("id") String idSupplied) {
         return response( req -> {
             PrivateUrl privateUrl = execCommand(new GetPrivateUrlCommand(req, findDatasetOrDie(idSupplied)));
-            return (privateUrl != null) ? ok(json(privateUrl)) 
+            return (privateUrl != null) ? ok(json(privateUrl))
                                         : error(Response.Status.NOT_FOUND, "Private URL not found.");
         });
     }
@@ -539,7 +542,7 @@ public class Datasets extends AbstractApiBean {
     @POST
     @Path("{id}/privateUrl")
     public Response createPrivateUrl(@PathParam("id") String idSupplied) {
-        return response( req -> 
+        return response( req ->
                 ok(json(execCommand(
                         new CreatePrivateUrlCommand(req, findDatasetOrDie(idSupplied))))));
     }
@@ -558,19 +561,19 @@ public class Datasets extends AbstractApiBean {
             }
         });
     }
-    
-    
-    
+
+
+
     /**
      * Add a File to an existing Dataset
-     * 
+     *
      * @param idSupplied
      * @param datasetId
      * @param jsonData
      * @param testFileInputStream
      * @param contentDispositionHeader
      * @param formDataBodyPart
-     * @return 
+     * @return
      */
     @POST
     @Path("{id}/add")
@@ -582,7 +585,7 @@ public class Datasets extends AbstractApiBean {
                     @FormDataParam("file") final FormDataBodyPart formDataBodyPart
                     ){
 
-          
+
         // -------------------------------------
         // (1) Get the user from the API key
         // -------------------------------------
@@ -594,28 +597,28 @@ public class Datasets extends AbstractApiBean {
                     ResourceBundle.getBundle("Bundle").getString("file.addreplace.error.auth")
                     );
         }
-        
+
         // -------------------------------------
         // (2) Get the Dataset Id
-        //  
+        //
         // -------------------------------------
         Dataset dataset;
-        
+
         Long datasetId;
         try {
             dataset = findDatasetOrDie(idSupplied);
         } catch (WrappedResponse wr) {
-            return wr.getResponse();           
+            return wr.getResponse();
         }
-        
-               
+
+
         // -------------------------------------
         // (3) Get the file name and content type
         // -------------------------------------
         String newFilename = contentDispositionHeader.getFileName();
         String newFileContentType = formDataBodyPart.getMediaType().toString();
-      
-        
+
+
         // (2a) Load up optional params via JSON
         //---------------------------------------
         OptionalFileParams optionalFileParams = null;
@@ -624,10 +627,10 @@ public class Datasets extends AbstractApiBean {
         try {
             optionalFileParams = new OptionalFileParams(jsonData);
         } catch (DataFileTagException ex) {
-            return error( Response.Status.BAD_REQUEST, ex.getMessage());            
+            return error( Response.Status.BAD_REQUEST, ex.getMessage());
         }
 
-        
+
         //-------------------
         // (3) Create the AddReplaceFileHelper object
         //-------------------
@@ -656,7 +659,7 @@ public class Datasets extends AbstractApiBean {
         if (addFileHelper.hasError()){
             return error(addFileHelper.getHttpErrorCode(), addFileHelper.getErrorMessagesAsString("\n"));
         }else{
-            String successMsg = ResourceBundle.getBundle("Bundle").getString("file.addreplace.success.add");        
+            String successMsg = ResourceBundle.getBundle("Bundle").getString("file.addreplace.success.add");
             try {
                 //msgt("as String: " + addFileHelper.getSuccessResult());
                 /**
@@ -675,11 +678,11 @@ public class Datasets extends AbstractApiBean {
 
             }
         }
-            
+
     } // end: addFileToDataset
 
 
-    
+
     private void msg(String m){
         //System.out.println(m);
         logger.fine(m);
@@ -690,9 +693,9 @@ public class Datasets extends AbstractApiBean {
     private void msgt(String m){
         dashes(); msg(m); dashes();
     }
-    
 
-   
+
+
     private Dataset findDatasetOrDie(String id) throws WrappedResponse {
         Dataset dataset;
         if (id.equals(PERSISTENT_ID_KEY)) {
@@ -720,8 +723,8 @@ public class Datasets extends AbstractApiBean {
             }
         }
     }
-    
-    
+
+
     private <T> T handleVersion( String versionId, DsVersionHandler<T> hdl )
         throws WrappedResponse {
         switch (versionId) {
@@ -744,7 +747,7 @@ public class Datasets extends AbstractApiBean {
                 }
 		}
     }
-    
+
     private DatasetVersion getDatasetVersionOrDie( final DataverseRequest req, String versionNumber, final Dataset ds ) throws WrappedResponse {
         DatasetVersion dsv = execCommand( handleVersion(versionNumber, new DsVersionHandler<Command<DatasetVersion>>(){
 
@@ -757,7 +760,7 @@ public class Datasets extends AbstractApiBean {
                 public Command<DatasetVersion> handleDraft() {
                     return new GetDraftDatasetVersionCommand(req, ds);
                 }
-  
+
                 @Override
                 public Command<DatasetVersion> handleSpecific(long major, long minor) {
                     return new GetSpecificPublishedDatasetVersionCommand(req, ds, major, minor);
@@ -773,5 +776,5 @@ public class Datasets extends AbstractApiBean {
         }
         return dsv;
     }
-    
+
 }
