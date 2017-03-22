@@ -1616,21 +1616,22 @@ function IdPSelectUI() {
         var form = buildSelectForm();
 
         var textInput = document.createElement('input');
-        form.appendChild(textInput);
+	// VTY 04.01.2017
+        //form.appendChild(textInput);
 
         textInput.type='text';
         setID(textInput, 'Input');
 
         var hidden = document.createElement('input');
         hidden.setAttribute('type', 'hidden');
-        form.appendChild(hidden);
+        //form.appendChild(hidden);
 
         hidden.name = returnIDParam;
         hidden.value='-';
 
         var button = buildContinueButton('Select');
         button.disabled = true;
-        form.appendChild(button);
+        //form.appendChild(button);
 
         form.onsubmit = function () {
             //
@@ -1690,7 +1691,7 @@ function IdPSelectUI() {
         //if (preferredTile) {
             // buildTextDiv(idpListDiv, 'idpList.label');
         //} else {
-            // buildTextDiv(idpListDiv, 'idpList.NoPreferred.label');
+            buildTextDiv(idpListDiv, 'idpList.NoPreferred.label');
         //}
 
         idpSelect = document.createElement('select');
@@ -1738,7 +1739,7 @@ function IdPSelectUI() {
         // The switcher
         //
         var a = document.createElement('a');
-        a.appendChild(document.createTextNode(getLocalizedMessage('idpList.showSearch')));
+        //a.appendChild(document.createTextNode(getLocalizedMessage('idpList.showSearch')));
         a.href = '#';
         setClass(a, 'DropDownToggle');
         a.onclick = function() {

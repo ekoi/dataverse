@@ -110,7 +110,11 @@ public class LoginPage implements java.io.Serializable {
         resetFilledCredentials(null);
         authProvider = authSvc.getAuthenticationProvider(systemConfig.getDefaultAuthProvider());
     }
-
+    
+    public boolean isAuthenticationProvidersAvailable() {
+        return ! authSvc.getAuthenticationProviderIds().isEmpty();
+    }
+    
     public List<AuthenticationProviderDisplayInfo> listCredentialsAuthenticationProviders() {
         List<AuthenticationProviderDisplayInfo> infos = new LinkedList<>();
         for ( String id : authSvc.getAuthenticationProviderIdsOfType( CredentialsAuthenticationProvider.class ) ) {

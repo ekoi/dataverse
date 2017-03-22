@@ -16,9 +16,15 @@ import edu.harvard.iq.dataverse.util.JsfHelper;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import javax.ejb.EJB;
 import javax.ejb.EJBException;
 import javax.faces.application.FacesMessage;
@@ -48,6 +54,8 @@ public class Shib implements java.io.Serializable {
     GroupServiceBean groupService;
     @EJB
     UserNotificationServiceBean userNotificationService;
+    @EJB
+    DatasetFieldServiceBean datasetFieldService;
 
     HttpServletRequest request;
 
@@ -100,7 +108,7 @@ public class Shib implements java.io.Serializable {
     private String redirectPage;
 //    private boolean debug = false;
     private String emailAddress;
-
+    
     public enum State {
 
         INIT,
@@ -202,11 +210,19 @@ public class Shib implements java.io.Serializable {
         internalUserIdentifer = ShibUtil.generateFriendlyLookingUserIdentifer(usernameAssertion, emailAddress);
         logger.fine("friendly looking identifer (backend will enforce uniqueness):" + internalUserIdentifer);
 
-        String affiliation = shibService.getAffiliation(shibIdp, shibService.getDevShibAccountType());
+        //String affiliation = shibService.getAffiliation(shibIdp, shibService.getDevShibAccountType());
+        String affiliation = getValueFromAssertion("schacHomeOrganization");
+        if (affiliation == null || affiliation.isEmpty())
+        	affiliation = shibService.getAffiliation(shibIdp, shibService.getDevShibAccountType());
         if (affiliation != null) {
+        	DatasetFieldType dsft =datasetFieldService.findByName("producer");
+            ControlledVocabularyValue cvv = datasetFieldService.findControlledVocabularyValueByDatasetFieldTypeAndIdentifier(dsft, "@" + affiliation);
+            if (cvv != null)
+            	affiliation = cvv.getStrValue();
             affiliationToDisplayAtConfirmation = affiliation;
             friendlyNameForInstitution = affiliation;
         }
+       
 //        emailAddress = "willFailBeanValidation"; // for testing createAuthenticatedUser exceptions
         displayInfo = new AuthenticatedUserDisplayInfo(firstName, lastName, emailAddress, affiliation, null);
 
@@ -279,7 +295,14 @@ public class Shib implements java.io.Serializable {
         logger.fine("redirectPage: " + redirectPage);
     }
 
-    public String confirmAndCreateAccount() {
+    private String getInstitutionMap(String schacHomeOrganization) {
+		if (schacHomeOrganization.equals("vu.nl"))
+			return "Vrije Universiteit Amsterdam";
+		
+		return schacHomeOrganization;
+	}
+
+	public String confirmAndCreateAccount() {
         ShibAuthenticationProvider shibAuthProvider = new ShibAuthenticationProvider();
         String lookupStringPerAuthProvider = userPersistentId;
         AuthenticatedUser au = null;
@@ -295,10 +318,6 @@ public class Shib implements java.io.Serializable {
         if (au != null) {
             logger.fine("created user " + au.getIdentifier());
             logInUserAndSetShibAttributes(au);
-            /**
-             * @todo Move this to
-             * AuthenticationServiceBean.createAuthenticatedUser
-             */
             userNotificationService.sendNotification(au,
                     new Timestamp(new Date().getTime()),
                     UserNotification.Type.CREATEACC, null);
