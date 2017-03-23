@@ -67,6 +67,8 @@ public class OAIRecord implements Serializable {
 
 
     public String getGlobalId() {
+    	if (globalId !=null)
+    		globalId = globalId.replace("hdl:", "http://hdl.handle.net/");
         return globalId;
     }
 
