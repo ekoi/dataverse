@@ -162,7 +162,11 @@ public class OAIRecordServiceBean implements java.io.Serializable {
         boolean isReleased = dataset.getReleasedVersion() != null;
         
         if (isReleased && dataset.getLastExportTime() != null) {
-            OAIRecord record = recordMap.get(dataset.getGlobalId());
+        	//Eko, JIRA DDN-258
+        	String globalId = dataset.getGlobalId();
+        	if (globalId !=null)
+        		globalId = globalId.replace("hdl:", "http://hdl.handle.net/");
+            OAIRecord record = recordMap.get(globalId);
             if (record == null) {
                 setUpdateLogger.info("creating a new OAI Record for " + dataset.getGlobalId());
                 record = new OAIRecord(setName, dataset.getGlobalId(), new Date());
