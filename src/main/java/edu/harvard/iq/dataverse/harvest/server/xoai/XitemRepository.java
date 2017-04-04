@@ -180,7 +180,11 @@ public class XitemRepository implements ItemRepository {
 
             for (int i = offset; i < offset + length && i < oaiRecords.size(); i++) {
                 OAIRecord oaiRecord = oaiRecords.get(i);
-                Dataset dataset = datasetService.findByGlobalId(oaiRecord.getGlobalId());
+                //Eko, JIRA DDN-258
+                String globalId = oaiRecord.getGlobalId();
+            	if (globalId !=null)
+            		globalId = globalId.replace("http://hdl.handle.net/", "hdl:");
+                Dataset dataset = datasetService.findByGlobalId(globalId);
                 if (dataset != null) {
                     Xitem xItem = new Xitem(oaiRecord).withDataset(dataset);
                     xoaiItems.add(xItem);
