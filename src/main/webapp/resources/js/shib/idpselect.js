@@ -1548,7 +1548,7 @@ function IdPSelectUI() {
 
         var preferredIdPDIV = buildDiv('PreferredIdPTile');
 
-        // buildTextDiv(preferredIdPDIV, 'idpPreferred.label');
+        //buildTextDiv(preferredIdPDIV, 'idpList.NoPreferred.label');
 
         for(var i = 0 ; i < maxPreferredIdPs && i < preferredIdPs.length; i++){
             if (preferredIdPs[i]) {
@@ -1610,7 +1610,7 @@ function IdPSelectUI() {
         //if (preferredTile) {
             //buildTextDiv(idpEntryDiv, 'idpEntry.label');
         //} else {
-            // buildTextDiv(idpEntryDiv, 'idpEntry.NoPreferred.label');
+            //buildTextDiv(idpEntryDiv, 'idpEntry.NoPreferred.label');
         //}
 
         var form = buildSelectForm();
