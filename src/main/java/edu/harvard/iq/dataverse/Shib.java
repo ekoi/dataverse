@@ -153,18 +153,21 @@ public class Shib implements java.io.Serializable {
         } catch (Exception ex) {
             return;
         }
-        String firstName;
-        try {
-            firstName = getRequiredValueFromAssertion(ShibUtil.firstNameAttribute);
-        } catch (Exception ex) {
-            return;
-        }
+
         String lastName;
         try {
             lastName = getRequiredValueFromAssertion(ShibUtil.lastNameAttribute);
         } catch (Exception ex) {
             return;
         }
+
+        String firstName = getValueFromAssertion(ShibUtil.firstNameAttribute);
+        if (firstName == null) {
+            firstName = lastName.substring(0, 1);
+            logger.info("Firstname is null, so take the first character of the lastname: " + firstName);
+        }
+
+
         ShibUserNameFields shibUserNameFields = ShibUtil.findBestFirstAndLastName(firstName, lastName, null);
         if (shibUserNameFields != null) {
             String betterFirstName = shibUserNameFields.getFirstName();
