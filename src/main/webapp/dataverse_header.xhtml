@@ -20,10 +20,12 @@
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
                     </button>
+                    <div jsf:rendered="#{dataverse.name!='DataverseNL' or DataverseUserPage.editMode=='CREATE'}">
                     <a href="/">
-                        <span class="navbar-brand"><i id="icon-dataverse" class="icon-dataverse"></i> #{bundle.dataverse}</span>
+                        <img src="/resources/images/DataversNL-logo.png" style="height:20%;width:20%;padding-top:5px;!important;"/>
                     </a>
-                    <h:outputLink value="#" onclick="PF('statusInfo').show()" rendered="#{!empty settingsWrapper.get(':StatusMessageText')}">
+                    </div>
+		    <h:outputLink value="#" onclick="PF('statusInfo').show()" rendered="#{!empty settingsWrapper.get(':StatusMessageText')}">
                         <span class="label label-default status">#{!empty settingsWrapper.get(':StatusMessageHeader') ? settingsWrapper.get(':StatusMessageHeader') : bundle['header.status.header']}</span>
                     </h:outputLink>
                     <ui:fragment rendered="#{empty settingsWrapper.get(':StatusMessageText') and !empty settingsWrapper.get(':StatusMessageHeader')}">
@@ -182,10 +184,15 @@
                 <div class="dataverseHeaderCell dataverseHeaderLogo" jsf:rendered="#{!empty dataverse.dataverseTheme.logo and dataverse.dataverseTheme.logoFormat == 'SQUARE'}">
                     <img src="/logos/#{dataverse.logoOwnerId}/#{dataverse.dataverseTheme.logo}" alt="#{dataverse.name} #{bundle.dataverse}"/>
                 </div>
-                <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{!empty dataverse.name}">
+                <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{!empty dataverse.name and dataverse.name!='DataverseNL'}">
                     <a href="/dataverse/#{dataverse.alias}" class="dataverseHeaderDataverseName" style="color:##{!empty dataverse.dataverseTheme.linkColor ? dataverse.dataverseTheme.linkColor : '428bca'};">#{dataverse.name} #{bundle.dataverse}</a>
                     <h:outputText style="color:##{!empty dataverse.dataverseTheme.textColor ? dataverse.dataverseTheme.textColor : '888888'};" value=" (#{dataverse.affiliation})" rendered="#{!empty dataverse.affiliation}"/>
                     <h:outputText value="#{bundle.unpublished}" styleClass="label label-warning label-unpublished" rendered="#{!dataverse.released}"/>
+                </div>
+                <div class="dataverseHeaderCell dataverseHeaderName" style="padding-top:10px;padding-bottom:10px;!important" jsf:rendered="#{!empty dataverse.name and dataverse.name=='DataverseNL'}">
+                <a href="/">
+                    <img height="40%" width="40%" src="/resources/images/DataversNL-logo.png"/>
+                    </a>
                 </div>
                 <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{empty dataverse.name}">
                     <h:outputText styleClass="dataverseHeaderDataverseName" value="#{bundle.newDataverse}"/>
@@ -199,9 +206,19 @@
                     </h:outputLink>
                 </div>
             </div>
-        </div>
+	</div>
 
         <div id="breadcrumbNavBlock" class="container" jsf:rendered="#{dataverseHeaderFragment.breadcrumbs.size() > 1}">
+        <script type="application/ld+json">{"@context":"http://schema.org","@type":"BreadcrumbList","itemListElement":[
+        <ui:repeat value="#{dataverseHeaderFragment.breadcrumbs}" var="breadcrumb" varStatus="status">
+        <ui:fragment rendered="#{!status.last}">
+        <ui:fragment rendered="#{breadcrumb.dvObject.instanceofDataverse}">
+        {"@type":"ListItem","position":"#{status.index+2}","item":{"@id":"https://dataverse.nl/dataverse/#{breadcrumb.dvObject.alias}","name":"#{breadcrumb.breadcrumbText}"}},
+        </ui:fragment>
+        </ui:fragment>
+        </ui:repeat>
+        {"@type":"ListItem","position":"1","item":{"@id":"https://dataverse.nl","name":"DataverseNL"}}]}</script>
+
             <ui:repeat value="#{dataverseHeaderFragment.breadcrumbs}" var="breadcrumb" varStatus="status">
                 <h:outputText value=" > " styleClass="breadcrumbCarrot" rendered="#{!status.first}"/>
                 <div class="breadcrumbBlock">
