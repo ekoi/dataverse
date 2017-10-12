@@ -550,22 +550,27 @@ public class Datasets extends AbstractApiBean {
 
     @POST
     @Path("{id}/moveTo/{newDataverseAlias}")
-    public Response updateDatasetOwner(@PathParam("id") long idSupplied, @PathParam("newDataverseAlias") String newDataverseAliasSupplied) {
-        final Dataset dataset = datasetService.find(idSupplied);
-        if (dataset == null)
-            return error( Response.Status.NOT_FOUND, "Dataset id '" + idSupplied + "' not found" );
+    public Response updateDatasetOwner(@PathParam("id") String idSupplied, @PathParam("newDataverseAlias") String newDataverseAliasSupplied) {
+        try {
+            User u = findUserOrDie();
+            if (!u.isSuperuser()) {
+                return error(Response.Status.FORBIDDEN, "Not a superuser");
+            }
+            final Dataset dataset = findDatasetOrDie(idSupplied);
 
-        final Dataverse dataverse = dataverseService.findByAlias(newDataverseAliasSupplied);
-        if (dataverse == null)
-            return error( Response.Status.NOT_FOUND, "Dataverse alias '" + newDataverseAliasSupplied + "' not found" );
+            final Dataverse dataverse = dataverseService.findByAlias(newDataverseAliasSupplied);
+            if (dataverse == null)
+                return error( Response.Status.NOT_FOUND, "Dataverse alias '" + newDataverseAliasSupplied + "' not found" );
 
-        dataset.setOwner(dataverse);
-        final Dataset newDataset = datasetService.merge(dataset);
-        final Dataverse newDataverseOwner = newDataset.getOwner();
-        final JsonObjectBuilder jsonbuilder = json(newDataset);
+            dataset.setOwner(dataverse);
+            final Dataset newDataset = datasetService.merge(dataset);
+            final Dataverse newDataverseOwner = newDataset.getOwner();
+            final JsonObjectBuilder jsonbuilder = json(newDataset);
 
-        return allowCors(ok(jsonbuilder.add("newDataverseOwner", (newDataverseOwner != null) ? json(newDataverseOwner) : null)));
-
+            return allowCors(ok(jsonbuilder.add("newDataverseOwner", (newDataverseOwner != null) ? json(newDataverseOwner) : null)));
+        } catch (WrappedResponse wr) {
+            return wr.getResponse();
+        }
     }
 
     @GET
