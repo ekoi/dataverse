@@ -548,6 +548,42 @@ public class Datasets extends AbstractApiBean {
                         new CreatePrivateUrlCommand(req, findDatasetOrDie(idSupplied))))));
     }
 
+    @POST
+    @Path("{id}/moveTo/{newDataverseAlias}")
+    public Response updateDatasetOwner(@PathParam("id") long idSupplied, @PathParam("newDataverseAlias") String newDataverseAliasSupplied) {
+        final Dataset dataset = datasetService.find(idSupplied);
+        if (dataset == null)
+            return error( Response.Status.NOT_FOUND, "Dataset id '" + idSupplied + "' not found" );
+
+        final Dataverse dataverse = dataverseService.findByAlias(newDataverseAliasSupplied);
+        if (dataverse == null)
+            return error( Response.Status.NOT_FOUND, "Dataverse alias '" + newDataverseAliasSupplied + "' not found" );
+
+        dataset.setOwner(dataverse);
+        final Dataset newDataset = datasetService.merge(dataset);
+        final Dataverse newDataverseOwner = newDataset.getOwner();
+        final JsonObjectBuilder jsonbuilder = json(newDataset);
+
+        return allowCors(ok(jsonbuilder.add("newDataverseOwner", (newDataverseOwner != null) ? json(newDataverseOwner) : null)));
+
+    }
+
+    @GET
+    @Path("{id}/owner")
+    public Response updateDatasetOwner(@PathParam("id") long idSupplied) {
+        final Dataset dataset = datasetService.find(idSupplied);
+        if (dataset == null)
+            return error( Response.Status.NOT_FOUND, "Dataset id '" + idSupplied + "' not found" );
+
+        final Dataverse dataverse = dataset.getOwner();
+        final JsonObjectBuilder jsonbuilder = json(dataset);
+
+        return allowCors(ok(jsonbuilder.add("DatasetOwner", (dataverse != null) ? json(dataverse) : null)));
+
+    }
+
+
+
     @DELETE
     @Path("{id}/privateUrl")
     public Response deletePrivateUrl(@PathParam("id") String idSupplied) {
