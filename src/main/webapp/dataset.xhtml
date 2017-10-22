@@ -192,6 +192,21 @@
                             <!-- END: Publish/Submit for Review/Return to Author Button Group -->
                             <!-- END: Edit/Publish Button Group -->
                             <!-- Email/Link/Share Button Group -->
+                            <!-- eko -->
+                            <div class="btn-group pull-right" id="datasetButtonBar" role="group">
+                                <p:commandLink type="button" styleClass="btn btn-default #{DatasetPage.locked ? 'disabled' : ''}" onclick="PF('archiveConfirm').show()"
+                                               rendered="#{DatasetPage.dataverseBridgeAvailable and DatasetPage.dataset.released and DatasetPage.dataset.latestVersion.versionState=='RELEASED' and DatasetPage.archivedDatasetStatus=='NOT_ARCHIVED_YET' and DatasetPage.dataset.owner.released
+                                                           and permissionsWrapper.canIssuePublishDatasetCommand(DatasetPage.dataset)}">
+                                    <span class="glyphicon glyphicon-save-file"/>Archive
+                                </p:commandLink>
+                                <div id="archivedInProgress"  jsf:rendered="#{DatasetPage.archivedDatasetStatus=='PROGRESS'}">
+                                    <button class="btn btn-default bootstrap-button-tooltip" title="Please reload the page to check on the archiving progress"><span class="glyphicon glyphicon-transfer"/>Archiving in progress</button>
+
+                                </div>
+                            </div>
+
+
+
                             <div class="btn-group pull-right" id="datasetButtonBar" role="group">
                                 <p:commandLink class="btn btn-default bootstrap-button-tooltip" title="#{bundle['dataset.email.datasetContactBtn']}"
                                                update=":contactDialog" oncomplete="PF('contactForm').show()" actionListener="#{sendFeedbackDialog.initUserInput}">
@@ -403,12 +418,12 @@
                             <f:setPropertyActionListener target="#{DatasetPage.selectedTabIndex}" value="#{DatasetPage.editMode == 'METADATA' ? 1 : DatasetPage.selectedTabIndex}"/>
                         </p:commandButton>
                     </div>
-                    
+
                     <div id="versionNumber" class="col-xs-12">
                                 <h:outputText rendered="#{DatasetPage.workingVersion.released}" styleClass="highlightBold"
-                                              value="#{bundle['file.DatasetVersion']}: #{DatasetPage.workingVersion.versionNumber}.#{DatasetPage.workingVersion.minorVersionNumber}" /> 
+                                              value="#{bundle['file.DatasetVersion']}: #{DatasetPage.workingVersion.versionNumber}.#{DatasetPage.workingVersion.minorVersionNumber}" />
                                 <h:outputText rendered="#{!DatasetPage.workingVersion.released}" styleClass="highlightBold"
-                                              value="#{bundle['file.DatasetVersion']}: #{DatasetPage.workingVersion.versionState}"/> 
+                                              value="#{bundle['file.DatasetVersion']}: #{DatasetPage.workingVersion.versionState}"/>
                     </div>
                     <!-- END Header / Button Panel -->
                     <!-- View/Tabs infoMode -->
@@ -488,7 +503,7 @@
                         <p:tabView id="tabView" widgetVar="content" activeIndex="#{DatasetPage.selectedTabIndex}"
                                    rendered="#{empty DatasetPage.editMode or (DatasetPage.editMode == 'METADATA' or DatasetPage.editMode == 'LICENSE')}">
                             <p:ajax event="tabChange" listener="#{DatasetPage.tabChanged}" oncomplete="bind_bsui_components();" update="@this" />
-                            <p:tab id="dataFilesTab" title="#{bundle.files}" rendered="#{(!DatasetPage.workingVersion.deaccessioned or 
+                            <p:tab id="dataFilesTab" title="#{bundle.files}" rendered="#{(!DatasetPage.workingVersion.deaccessioned or
                                                               (DatasetPage.workingVersion.deaccessioned and DatasetPage.canUpdateDataset()))  and
                                                               (empty DatasetPage.editMode)}">
                                 <ui:include src="filesFragment.xhtml">
@@ -499,16 +514,16 @@
                             <!-- 4.2.1: the 3 tabs below - metadata, terms and versions: these account for ~100 queries total -->
                             <!-- a lot of these however, are repeated queries on AuthenticatedUser and RoleAssignment; once these are optimized, the tabs will become very cheap. -->
                             <p:tab id="metadataMapTab" title="#{bundle['file.dataFilesTab.metadata.header']}"
-                                        rendered="#{(!DatasetPage.workingVersion.deaccessioned or (DatasetPage.workingVersion.deaccessioned and DatasetPage.canUpdateDataset())) 
+                                        rendered="#{(!DatasetPage.workingVersion.deaccessioned or (DatasetPage.workingVersion.deaccessioned and DatasetPage.canUpdateDataset()))
                                              and (empty DatasetPage.editMode or DatasetPage.editMode == 'METADATA')}">
 
                                 <div class="button-block tab-header margin-bottom text-right" jsf:rendered="#{empty DatasetPage.editMode and !widgetWrapper.widgetView}">
-                                    <p:commandLink type="button" styleClass="btn btn-default" actionListener="#{DatasetPage.edit('METADATA')}" update="@form,:messagePanel" oncomplete="javascript:post_edit_metadata()" 
+                                    <p:commandLink type="button" styleClass="btn btn-default" actionListener="#{DatasetPage.edit('METADATA')}" update="@form,:messagePanel" oncomplete="javascript:post_edit_metadata()"
                                                    disabled="#{DatasetPage.locked}" rendered="#{DatasetPage.sessionUserAuthenticated and empty DatasetPage.editMode and !widgetWrapper.widgetView
                                                                and DatasetPage.canUpdateDataset() and !DatasetPage.dataset.deaccessioned }">
                                         <f:setPropertyActionListener target="#{DatasetPage.selectedTabIndex}" value="0" />
                                         <span class="glyphicon glyphicon-pencil"/> #{bundle['file.dataFilesTab.metadata.addBtn']}
-                                    </p:commandLink>                                   
+                                    </p:commandLink>
                                     <div class="btn-group" jsf:rendered="#{DatasetPage.dataset.released and !DatasetPage.dataset.deaccessioned}" >
                                         <button class="btn btn-default dropdown-toggle" type="button" styleClass="btn btn-default" data-toggle="dropdown">
                                             <span class="glyphicon glyphicon-export"/> #{bundle['dataset.exportBtn']} <span class="caret"/></button>
@@ -518,7 +533,7 @@
                                                     <h:outputLink value="#{exporter[1]}" target="_blank">
                                                         <h:outputText value="#{exporter[0]}"/>
                                                     </h:outputLink>
-                                                </li>  
+                                                </li>
                                             </ui:repeat>
                                         </ul>
                                     </div>
@@ -532,7 +547,7 @@
                                 </ui:include>
                                 <!-- commented out as handled by export button above
                                 to enable in development: curl -X PUT -d true http://localhost:8080/api/admin/settings/:DdiExportEnabled
-                                <div jsf:rendered="#{DatasetPage.metadataExportEnabled}">                                  
+                                <div jsf:rendered="#{DatasetPage.metadataExportEnabled}">
                                     <h:outputLink value="#{DatasetPage.metadataAsJsonUrl}" rendered="#{DatasetPage.metadataAsJsonUrl != null}">
                                         <h:outputText value="Export metadata as JSON"/>
                                     </h:outputLink>
@@ -1207,6 +1222,43 @@
                     </p:dialog>
 
                     <!-- Publish/Submit for Review Dialogs -->
+                    <!-- eko -->
+                    <p:dialog width="70%" header="Archiving Dataset" widgetVar="archiveConfirm" modal="true">
+                        <p:panel id="tdr-panel" header="Register your Trust Digital Repository (TDR) Account and archive your dataset" rendered="#{DatasetPage.tdrUser == ''}">
+                            <p:messages id="msg" closable="true" />
+
+                            <h:panelGrid columns="3" cellpadding="5">
+                                <p:outputLabel for="username" value="TDR Username:" />
+                                <p:inputText id="username" value="#{DatasetPage.tdrUser}" required="true" label="Username">
+
+                                </p:inputText>
+                                <p:message for="username" display="icon" />
+
+                                <p:outputLabel for="pwd" value="TDR Password:" />
+                                <p:password id="pwd" value="#{DatasetPage.tdrPassword}" label="Password" required="true">
+
+                                    <p:ajax update="msgPassword" event="keyup" />
+                                </p:password>
+                                <p:message for="pwd" id="msgPassword" display="icon" />
+
+                            </h:panelGrid>
+                            <h:outputText value="&lt;br/&gt;" escape="false" />
+                            <p:commandButton value="Register and Archive" id="nonAjax" action="#{DatasetPage.archiveDataset}"  ajax="false" />
+                            <p:commandButton value="#{bundle.cancel}" onclick="PF('archivedConfirm').hide();"  />
+                        </p:panel>
+
+                        <p:panel id="do-archive-panel" header="Do you want to archive this dataset to EASY?" rendered="#{DatasetPage.tdrUser.length() > 0}">
+                            <p class="text-danger">
+                                <span class="glyphicon glyphicon-warning-sign"/>
+                            </p>
+                            <div class="button-block">
+                                <p:commandButton value="#{bundle.continue}" onclick="PF('archiveConfirm').hide();" action="#{DatasetPage.archiveDataset}" />
+                                <p:commandButton value="#{bundle.cancel}" onclick="PF('archivedConfirm').hide();"  />
+                            </div>
+                        </p:panel>
+                    </p:dialog>
+
+
                     <p:dialog width="70%" header="#{bundle['dataset.publish.header']}" widgetVar="publishConfirm" modal="true">
                         <p class="text-danger">
                             <span class="glyphicon glyphicon-warning-sign"/> #{bundle['dataset.publish.tip']}

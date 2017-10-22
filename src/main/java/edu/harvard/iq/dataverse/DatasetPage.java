@@ -3,22 +3,15 @@ package edu.harvard.iq.dataverse;
 import edu.harvard.iq.dataverse.authorization.AuthenticationServiceBean;
 import edu.harvard.iq.dataverse.authorization.Permission;
 import edu.harvard.iq.dataverse.authorization.providers.builtin.BuiltinUserServiceBean;
+import edu.harvard.iq.dataverse.authorization.users.ApiToken;
 import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
 import edu.harvard.iq.dataverse.authorization.users.PrivateUrlUser;
+import edu.harvard.iq.dataverse.datasetutility.TwoRavensHelper;
+import edu.harvard.iq.dataverse.datasetutility.WorldMapPermissionHelper;
 import edu.harvard.iq.dataverse.datavariable.VariableServiceBean;
 import edu.harvard.iq.dataverse.engine.command.Command;
 import edu.harvard.iq.dataverse.engine.command.exception.CommandException;
-import edu.harvard.iq.dataverse.engine.command.impl.CreateDatasetCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.CreatePrivateUrlCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.DeaccessionDatasetVersionCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.DeleteDatasetVersionCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.DeletePrivateUrlCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.DestroyDatasetCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.GetPrivateUrlCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.LinkDatasetCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.PublishDatasetCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.PublishDataverseCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.UpdateDatasetCommand;
+import edu.harvard.iq.dataverse.engine.command.impl.*;
 import edu.harvard.iq.dataverse.export.ExportException;
 import edu.harvard.iq.dataverse.export.ExportService;
 import edu.harvard.iq.dataverse.export.spi.Exporter;
@@ -31,56 +24,48 @@ import edu.harvard.iq.dataverse.privateurl.PrivateUrlUtil;
 import edu.harvard.iq.dataverse.search.SearchFilesServiceBean;
 import edu.harvard.iq.dataverse.search.SortBy;
 import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
-import edu.harvard.iq.dataverse.util.BundleUtil;
-import edu.harvard.iq.dataverse.util.FileSortFieldAndOrder;
-import edu.harvard.iq.dataverse.util.FileUtil;
-import edu.harvard.iq.dataverse.util.JsfHelper;
-import static edu.harvard.iq.dataverse.util.JsfHelper.JH;
-import edu.harvard.iq.dataverse.util.StringUtil;
-import edu.harvard.iq.dataverse.util.SystemConfig;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.logging.Logger;
+import edu.harvard.iq.dataverse.util.*;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.primefaces.component.tabview.TabView;
+import org.primefaces.context.RequestContext;
+import org.primefaces.event.FileUploadEvent;
+import org.primefaces.event.TabChangeEvent;
+import org.primefaces.model.UploadedFile;
+
 import javax.ejb.EJB;
 import javax.ejb.EJBException;
 import javax.faces.application.FacesMessage;
 import javax.faces.context.FacesContext;
 import javax.faces.event.ActionEvent;
+import javax.faces.event.AjaxBehaviorEvent;
 import javax.faces.event.ValueChangeEvent;
+import javax.faces.model.SelectItem;
 import javax.faces.view.ViewScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
-import org.primefaces.event.FileUploadEvent;
-import org.primefaces.model.UploadedFile;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
 import javax.validation.ConstraintViolation;
-import org.apache.commons.httpclient.HttpClient;
-import org.primefaces.context.RequestContext;
-import java.util.Arrays;
-import java.util.HashSet;
-import javax.faces.model.SelectItem;
+import java.io.*;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.logging.Level;
-import edu.harvard.iq.dataverse.datasetutility.TwoRavensHelper;
-import edu.harvard.iq.dataverse.datasetutility.WorldMapPermissionHelper;
+import java.util.logging.Logger;
 
-import javax.faces.event.AjaxBehaviorEvent;
-
-import org.apache.commons.lang.StringEscapeUtils;
-
-import org.primefaces.component.tabview.TabView;
-import org.primefaces.event.TabChangeEvent;
+import static edu.harvard.iq.dataverse.util.JsfHelper.JH;
 
 /**
  *
@@ -191,6 +176,14 @@ public class DatasetPage implements java.io.Serializable {
     private String protocol = "";
     private String authority = "";
     private String separator = "";
+
+    //DataverseBridge
+    private String archivedDatasetStatus = "FAILED";
+    private String doi = "";
+    private String landingPage = "";
+    private String tdrUser = "";
+    private String tdrName = "DEASY";
+    private String tdrPassword = "";
 
     private boolean noDVsAtAll = false;
 
@@ -1201,9 +1194,36 @@ public class DatasetPage implements java.io.Serializable {
                 JH.addMessage(FacesMessage.SEVERITY_INFO, BundleUtil.getStringFromBundle("dataset.privateurl.infoMessageReviewer"));
             }
         }
+        //DataverseBridge
+        if (isDataverseBridgeAvailable() && dataset.getLatestVersion().isReleased())
+            setDataverseBridgeData();
+
         return null;
     }
-    
+
+    private void setDataverseBridgeData(){
+        JsonObject dvnBridgArchivedDatasetStatus = getResponseAsJsonObject("/archiving-report/get-report-by-dataset/" + tdrName + "?dataset=" + persistentId);
+        if (dvnBridgArchivedDatasetStatus == null || dvnBridgArchivedDatasetStatus.isEmpty()) {
+            doi = "";
+            landingPage = "";
+            archivedDatasetStatus = "NOT_ARCHIVED_YET";
+        } else {
+            doi = dvnBridgArchivedDatasetStatus.getString("doi");
+            landingPage = dvnBridgArchivedDatasetStatus.getString("landingpage");
+            archivedDatasetStatus = dvnBridgArchivedDatasetStatus.getString("status");
+        }
+
+        if (isSessionUserAuthenticated()){
+            //hardcoded tdrname= DEASY
+            JsonObject dvnBridgeTdrUserRegistered = getResponseAsJsonObject("/dvn-tdr-user/get-by-name/" + tdrName + "?dvnUser=" + this.session.getUser().getIdentifier().replace("@", ""));
+            if (dvnBridgeTdrUserRegistered == null || dvnBridgeTdrUserRegistered.isEmpty()){
+                tdrUser = "";
+            } else
+                tdrUser = dvnBridgeTdrUserRegistered.getString("tdrUsername");
+        }
+
+    }
+
     public boolean isReadOnly() {
         return readOnly; 
     }
@@ -3511,5 +3531,152 @@ public class DatasetPage implements java.io.Serializable {
     public void setTwoRavensHelper(TwoRavensHelper twoRavensHelper) {
         this.twoRavensHelper = twoRavensHelper;
     }
+
+    //public String dataverseBridgeAccount
+    public boolean isDataverseBridgeAvailable() {
+        boolean dataverseBridgeAvailable = settingsService.isTrueForKey(SettingsServiceBean.Key.DataverseBridgeEabled, false);
+        return dataverseBridgeAvailable;
+    }
+
+    public String getArchivedDatasetStatus() {
+        return archivedDatasetStatus;
+    }
+
+    public String getDoi() {
+        return doi;
+    }
+
+    public String getLandingPage() {
+        return landingPage;
+    }
+
+    private JsonObject getResponseAsJsonObject(String path) {
+        String dataverseBridgeUrl = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl, "") +
+                path;
+
+        JsonObject jsonObject = null;
+        try {
+            URL url = new URL(dataverseBridgeUrl);
+            JsonReader reader = Json.createReader(
+                    new StringReader(IOUtils.toString(url, "UTF-8")));
+            jsonObject = reader.readObject();
+            reader.close();
+
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, e.getMessage());
+        }
+        return jsonObject;
+    }
+
+    private JsonObject postDataToDataverseBridge(String path) {
+        String dataverseBridgeUrl = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl, "") +
+                path;
+        CloseableHttpClient client = HttpClients.createDefault();
+        HttpPost httpPost = new HttpPost(dataverseBridgeUrl);
+        JsonObject jsonObject = null;
+        try {
+            CloseableHttpResponse response = client.execute(httpPost);
+            if (response.getStatusLine().getStatusCode() == HttpStatus.SC_CREATED) {
+                JsonReader reader = Json.createReader(
+                        new StringReader(readEntityAsString(response.getEntity())));
+                jsonObject = reader.readObject();
+                reader.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+
+            try {
+                client.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return jsonObject;
+    }
+    private String readEntityAsString(HttpEntity entity) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        IOUtils.copy(entity.getContent(), bos);
+        return new String(bos.toByteArray(), "UTF-8");
+    }
+    public String getTdrUser() {
+        return tdrUser;
+    }
+
+    public void setTdrUser(String tdrUser) {
+        this.tdrUser = tdrUser;
+    }
+
+    public String getTdrPassword(){
+        return tdrPassword;
+    }
+
+    public void setTdrPassword(String tdrPassword) {
+        this.tdrPassword = tdrPassword;
+    }
+
+    /* THIS IS TworRavensHelper Code, we should make it public on th TwoRavensHelper class and use it here*/
+    private String getApiTokenKey() {
+        ApiToken apiToken;
+        if (session.getUser() == null) {
+            return null;
+        }
+        if (isSessionUserAuthenticated()) {
+            AuthenticatedUser au = (AuthenticatedUser) session.getUser();
+            apiToken = authService.findApiTokenByUser(au);
+            if (apiToken != null) {
+                return apiToken.getTokenString();
+            }
+            // Generate if not available?
+            // Or should it just be generated inside the authService
+            // automatically?
+            apiToken = authService.generateApiTokenForUser(au);
+            if (apiToken != null) {
+                return apiToken.getTokenString();
+            }
+        }
+        return "";
+
+    }
+
+    public String archiveDataset() {
+
+        logger.info("Archiving dataset " + persistentId);
+        //Check whether the this user has DataverseBridge account.
+        String dvnUser = this.session.getUser().getIdentifier().replace("@", "");
+        JsonObject dvnBridgeDvnUserTdr = getResponseAsJsonObject("/dvn-tdr-user/get-by-name/" + tdrName + "?dvnUser=" + dvnUser);
+        if (dvnBridgeDvnUserTdr.isEmpty()){
+            logger.info("Register to TDR: DEASY");
+            //
+            String apitoken = getApiTokenKey();
+
+            JsonObject dvnBridgeCreateDvnUserTdr = postDataToDataverseBridge("/dvn-tdr-user/create?dvnUser="
+                    + dvnUser + "&dvnUserApitoken=" + apitoken + "&tdrUsername=" + tdrUser
+                    + "&tdrPassword=" + tdrPassword + "&tdrName=" + tdrName);
+            if (dvnBridgeCreateDvnUserTdr != null || !dvnBridgeCreateDvnUserTdr.isEmpty()) {
+                //Create DvnTdrUser record
+                JsonObject tdrJsonObject = dvnBridgeCreateDvnUserTdr.getJsonObject("tdr");
+                //never get null or empty jsonobject.
+                logger.info("Registered to tdr name " + tdrJsonObject.getString("name") + " iri: " + tdrJsonObject.getString("iri"));
+            } else {
+                //do something here, eq invalid tdr given data.
+            }
+        }
+        //Archived the dataset
+        JsonObject dvnBridgeArchiving = postDataToDataverseBridge("/handler/ingest/"
+                + persistentId + "/target/" + tdrName + "?dvnUser=" + dvnUser);
+        if (dvnBridgeArchiving != null && !dvnBridgeArchiving.isEmpty()) {
+            archivedDatasetStatus = dvnBridgeArchiving.getString("status");
+        }
+        //Check archiving process
+        JsonObject archivingReportCurrent = getResponseAsJsonObject("/archiving-report/get-report-by-dataset/DEASY?dataset=" + persistentId);
+        if (!archivingReportCurrent.isEmpty())
+            archivedDatasetStatus = archivingReportCurrent.getString("status");
+        else
+            archivedDatasetStatus = "NOT_ARCHIVED_YET";
+
+        return archivedDatasetStatus;
+    }
+
 
 }

@@ -235,7 +235,17 @@ public class SettingsServiceBean {
         /*
         Whether Harvesting (OAI) service is enabled
         */
-        OAIServerEnabled;
+        OAIServerEnabled,
+
+        /*
+        Whether DataverseBridge service is enabled
+        */
+        DataverseBridgeEabled,
+
+        /*
+        DataverseBridge location
+         */
+        DataverseBridgeUrl;
         
         @Override
         public String toString() {
