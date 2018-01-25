@@ -320,7 +320,9 @@ public class HandlenetServiceBean extends AbstractIdServiceBean {
     
     private String getHandleAuthority(String handlePrefix) {
         logger.log(Level.FINE,"getHandleAuthority");
-        return "0.NA/" + handlePrefix;
+        // Authority Handle, depends on Handleservice setup
+        // Default Handle install has 0.NA/<prefix> but for 'independent service' config it is <prefix>/ADMIN
+        return handlePrefix + "/ADMIN";
     }
 
     @Override
@@ -404,7 +406,7 @@ public class HandlenetServiceBean extends AbstractIdServiceBean {
 
     private String getAuthHandle(Dataset datasetIn) {
         // TODO hack: GNRSServiceBean retrieved this from vdcNetworkService
-        return "0.NA/" + datasetIn.getAuthority();
+        return getHandleAuthority(datasetIn.getAuthority());
     }
     
     @Override
