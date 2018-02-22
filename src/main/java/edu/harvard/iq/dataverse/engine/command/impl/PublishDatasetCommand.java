@@ -42,6 +42,7 @@ import javax.json.JsonObjectBuilder;
 @RequiredPermissions(Permission.PublishDataset)
 public class PublishDatasetCommand extends AbstractCommand<Dataset> {
     private static final Logger logger = Logger.getLogger(PublishDatasetCommand.class.getCanonicalName());
+    private static final int FOOLPROOF_RETRIAL_ATTEMPTS_LIMIT = 2 ^ 8;
 
     boolean minorRelease = false;
     Dataset theDataset;
@@ -98,13 +99,20 @@ public class PublishDatasetCommand extends AbstractCommand<Dataset> {
                         idServiceBean.createIdentifier(theDataset);
                         theDataset.setGlobalIdCreateTime(new Timestamp(new Date().getTime()));
                     } else {
-//                        theDataset.setIdentifier(ctxt.datasets().generateIdentifierSequence(protocol, authority, theDataset.getDoiSeparator()));
-//                        if (!idServiceBean.alreadyExists(theDataset)) {
-//                            idServiceBean.createIdentifier(theDataset);
-//                            theDataset.setGlobalIdCreateTime(new Timestamp(new Date().getTime()));
-//                        } else {
-//                            throw new IllegalCommandException("This dataset may not be published because its identifier is already in use by another dataset.", this);
+// DANS does not want to change the identifier when publishing
+//                        int attempts = 0;
+//
+//                        while (idServiceBean.alreadyExists(theDataset) && attempts < FOOLPROOF_RETRIAL_ATTEMPTS_LIMIT) {
+//                            theDataset.setIdentifier(ctxt.datasets().generateDatasetIdentifier(theDataset, idServiceBean));
+//                            attempts++;
 //                        }
+//
+//                        if (idServiceBean.alreadyExists(theDataset)) {
+//                            throw new IllegalCommandException("This dataset may not be published because its identifier is already in use by another dataset;gave up after " + attempts + " attempts. Current (last requested) identifier: " + theDataset.getIdentifier(), this);
+//                        }
+//                        idServiceBean.createIdentifier(theDataset);
+//                        theDataset.setGlobalIdCreateTime(new Timestamp(new Date().getTime()));
+//
                     }
                 } catch (Throwable e) {
                     throw new CommandException(BundleUtil.getStringFromBundle("dataset.publish.error", idServiceBean.getProviderInformation()),this); 
@@ -169,6 +177,56 @@ public class PublishDatasetCommand extends AbstractCommand<Dataset> {
             if (dataFile.getFileMetadata() != null && dataFile.getFileMetadata().getDatasetVersion().equals(theDataset.getLatestVersion())) {
                 dataFile.setRestricted(dataFile.getFileMetadata().isRestricted());
             }
+            
+            
+            if (dataFile.isRestricted()) {
+                // A couple things need to happen if the file has been restricted: 
+                // 1. If there's a map layer associated with this shape file, or 
+                //    tabular-with-geo-tag file, all that map layer data (that 
+                //    includes most of the actual data in the file!) need to be
+                //    removed from WorldMap and GeoConnect, since anyone can get 
+                //    download the data from there;
+                // 2. If this (image) file has been assigned as the dedicated 
+                //    thumbnail for the dataset, we need to remove that assignment, 
+                //    now that the file is restricted. 
+
+                // Map layer: 
+                
+                if (ctxt.mapLayerMetadata().findMetadataByDatafile(dataFile) != null) {
+                    // (We need an AuthenticatedUser in order to produce a WorldMap token!)
+                    String id = getUser().getIdentifier();
+                    id = id.startsWith("@") ? id.substring(1) : id;
+                    AuthenticatedUser authenticatedUser = ctxt.authentication().getAuthenticatedUser(id);
+                    try {
+                        logger.fine("(1 of 2) PublishDatasetCommand: delete MapLayer From *WorldMap*");
+                        ctxt.mapLayerMetadata().deleteMapLayerFromWorldMap(dataFile, authenticatedUser);
+
+                        // If that was successful, delete the layer on the Dataverse side as well:
+                        //SEK 4/20/2017                
+                        //Command to delete from Dataverse side
+                        logger.fine("(2 of 2) PublishDatasetCommand: Delete MapLayerMetadata From *Dataverse*");
+                        boolean deleteMapSuccess = ctxt.engine().submit(new DeleteMapLayerMetadataCommand(this.getRequest(), dataFile));
+
+                        // RP - Bit of hack, update the datafile here b/c the reference to the datafile 
+                        // is not being passed all the way up/down the chain.   
+                        //
+                        dataFile.setPreviewImageAvailable(false);
+
+                    } catch (IOException ioex) {
+                        // We are not going to treat it as a fatal condition and bail out, 
+                        // but we will send a notification to the user, warning them about
+                        // the layer still being out there, un-deleted:
+                        ctxt.notifications().sendNotification(authenticatedUser, new Timestamp(new Date().getTime()), UserNotification.Type.MAPLAYERDELETEFAILED, dataFile.getFileMetadata().getId());
+                    }
+
+                }
+                
+                // Dataset thumbnail assignment: 
+                
+                if (dataFile.equals(theDataset.getThumbnailFile())) {
+                    theDataset.setThumbnailFile(null);
+                }
+            }
         }
 
         theDataset.setFileAccessRequest(theDataset.getLatestVersion().getTermsOfUseAndAccess().isFileAccessRequest());
@@ -180,7 +238,7 @@ public class PublishDatasetCommand extends AbstractCommand<Dataset> {
         */
         
         try {
-            ExportService instance = ExportService.getInstance();
+            ExportService instance = ExportService.getInstance(ctxt.settings());
             instance.exportAllFormats(theDataset);
 
         } catch (ExportException ex) {
@@ -230,7 +288,7 @@ public class PublishDatasetCommand extends AbstractCommand<Dataset> {
             ctxt.em().merge(datasetDataverseUser);
         }
 
-        if (idServiceBean!= null && !idServiceBean.registerWhenPublished())
+        if (idServiceBean!= null )
             try{
                 idServiceBean.publicizeIdentifier(savedDataset);
             }catch (Throwable e) {

@@ -76,7 +76,7 @@ public class HandlenetServiceBean extends AbstractIdServiceBean {
 
     @Override
     public boolean registerWhenPublished() {
-        return true; // TODO current value plays safe, can we loosen up?
+        return false; // TODO current value plays safe, can we loosen up?
     }
 
     public void reRegisterHandle(Dataset dataset) {
@@ -244,8 +244,8 @@ public class HandlenetServiceBean extends AbstractIdServiceBean {
     }
     private String getRegistrationUrl(Dataset dataset) {
         logger.log(Level.FINE,"getRegistrationUrl");
-        String siteUrl = getSiteUrl();
-        
+        String siteUrl = systemConfig.getDataverseSiteUrl();
+                
         //String targetUrl = siteUrl + "/dataset.xhtml?persistentId=hdl:" + dataset.getAuthority() 
         String targetUrl = siteUrl + Dataset.TARGET_URL + "hdl:" + dataset.getAuthority()         
                 + "/" + dataset.getIdentifier();  
@@ -396,12 +396,8 @@ public class HandlenetServiceBean extends AbstractIdServiceBean {
 
     private boolean updateIdentifierStatus(Dataset dataset, String statusIn) {
         logger.log(Level.FINE,"updateIdentifierStatus");
-        String identifier = getIdentifierFromDataset(dataset);
-        HashMap<String, String> metadata = getUpdateMetadataFromDataset(dataset);
-        metadata.put("_status", statusIn);
-        metadata.put("_target", getTargetUrl(dataset));
-        // TODO drop getting identifier and meatdata if indeed not required
-        return null == registerNewHandle(dataset); // Exception have been logged
+        reRegisterHandle(dataset); // No Need to register new - this is only called when a handle exists
+        return true;
     }
 
     private String getAuthHandle(Dataset datasetIn) {

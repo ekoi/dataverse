@@ -48,11 +48,13 @@ function IdPSelectUIParms() {
             'fatal.badProtocol': "Return request must start with https:// or http://",
             'idpPreferred.label': 'Use a previous selection:',
             'idpEntry.label': 'Or enter your institution\'s name.',
-            'idpEntry.NoPreferred.label': 'Please use your institutional profile via SURFconext authentication system to log in DataverseNL account.',
+            'idpEntry.NoPreferred.label': 'Enter your institution\'s name and click "Continue" to log in via your institution\'s authentication system.',
             'idpList.label': 'Or select your institution from the list below.',
+
             'idpList.NoPreferred.label': 'Please use your institutional profile via SURFconext authentication system to login into DataverseNL account.',
             'idpList.defaultOptionLabel': 'Please select federated service...',
             'idpList.showList': ' ',
+
             'idpList.showSearch': 'Allow me to type the name of my institution',
             'submitButton.label': 'Continue',
             'helpText': 'Help',

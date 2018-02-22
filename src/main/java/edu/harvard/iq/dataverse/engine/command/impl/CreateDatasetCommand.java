@@ -74,8 +74,14 @@ public class CreateDatasetCommand extends AbstractCommand<Dataset> {
     @Override
     public Dataset execute(CommandContext ctxt) throws CommandException {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-hh.mm.ss");
-
-        if ( (importType != ImportType.MIGRATION && importType != ImportType.HARVEST) && !ctxt.datasets().isUniqueIdentifier(theDataset.getIdentifier(), theDataset.getProtocol(), theDataset.getAuthority(), theDataset.getDoiSeparator()) ) {
+        
+        
+        
+        IdServiceBean idServiceBean = IdServiceBean.getBean(theDataset.getProtocol(), ctxt);
+        if(theDataset.getIdentifier() == null || theDataset.getIdentifier().isEmpty()){
+            theDataset.setIdentifier(ctxt.datasets().generateDatasetIdentifier(theDataset, idServiceBean));
+        }
+        if ( (importType != ImportType.MIGRATION && importType != ImportType.HARVEST) && !ctxt.datasets().isIdentifierUniqueInDatabase(theDataset.getIdentifier(), theDataset, idServiceBean)) {
             throw new IllegalCommandException(String.format("Dataset with identifier '%s', protocol '%s' and authority '%s' already exists",
                                                              theDataset.getIdentifier(), theDataset.getProtocol(), theDataset.getAuthority()),
                                                 this);
@@ -129,14 +135,31 @@ public class CreateDatasetCommand extends AbstractCommand<Dataset> {
         if (theDataset.getDoiSeparator()==null) theDataset.setDoiSeparator(doiSeparator);
        
         if (theDataset.getIdentifier()==null) {
-            theDataset.setIdentifier(ctxt.datasets().generateIdentifierSequence(theDataset.getProtocol(), theDataset.getAuthority(), theDataset.getDoiSeparator()));
+            /* 
+                If this command is being executed to save a new dataset initialized
+                by the Dataset page (in CREATE mode), it already has the persistent 
+                identifier. 
+                Same with a new harvested dataset - the imported metadata record
+                must have contained a global identifier, for the harvester to be
+                trying to save it permanently in the database. 
+            
+                In some other cases, such as when a new dataset is created 
+                via the API, the identifier will need to be generated here. 
+            
+                        -- L.A. 4.6.2
+             */
+            
+            theDataset.setIdentifier(ctxt.datasets().generateDatasetIdentifier(theDataset, idServiceBean));
+            
         }
+        logger.fine("Saving the files permanently.");
+        ctxt.ingest().addFiles(dsv, theDataset.getFiles());
         logger.log(Level.FINE,"doiProvider={0} protocol={1}  importType={2}  GlobalIdCreateTime=={3}", new Object[]{doiProvider, protocol,  importType, theDataset.getGlobalIdCreateTime()});
         // Attempt the registration if importing dataset through the API, or the app (but not harvest or migrate)
         if ((importType == null || importType.equals(ImportType.NEW))
                 && theDataset.getGlobalIdCreateTime() == null) {
                 String doiRetString = "";
-                IdServiceBean idServiceBean = IdServiceBean.getBean(ctxt);
+                idServiceBean = IdServiceBean.getBean(ctxt);
                 try{
                     logger.log(Level.FINE,"creating identifier");
                     doiRetString = idServiceBean.createIdentifier(theDataset);
