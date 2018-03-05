@@ -6,6 +6,8 @@ Now that the :doc:`prerequisites` are in place, we are ready to execute the Data
 
 .. contents:: :local:
 
+.. _dataverse-installer:
+
 Running the Dataverse Installer
 -------------------------------
 
@@ -26,7 +28,7 @@ Execute the installer script like this::
 
 **NEW in Dataverse 4.3:** It is no longer necessary to run the installer as root!
 Just make sure the user that runs the installer has the write permission in the Glassfish directory. For example, if your Glassfish directory is owned by root, and you try to run the installer as a regular user, it's not going to work. 
-(Do note, that you want the Glassfish directory to be owned by the same user that will be running Glassfish. And you most likely won't need to run it as root. The only reason to run it as root would be to be able to run the application on the default HTTP(S) ports 80 and 443, instead of 8080 and 8181. However, an easier, and more secure way to achieve that would be to instead keep Glassfish running on a high port, and hide it behind an Apache Proxy, via AJP, running on port 80. This configuration is in fact required if you choose to have your Dataverse support Shibboleth authentication. See more discussion on this here: :doc:`shibboleth`.)
+(Do note, that you want the Glassfish directory to be owned by the same user that will be running Glassfish. And you most likely won't need to run it as root. The only reason to run Glassfish as root would be to have a convenient way to run the application on the default HTTP(S) ports 80 and 443, instead of 8080 and 8181. However, an easier, and more secure way to achieve that would be to instead keep Glassfish running on a high port, and hide it behind an Apache Proxy, via AJP, running on port 80. This configuration is in fact required if you choose to have your Dataverse support Shibboleth authentication. See more discussion on this here: :doc:`shibboleth`.)
 
 
 The script will prompt you for some configuration values. If this is a test/evaluation installation, it may be possible to accept the default values provided for most of the settings:
@@ -47,6 +49,10 @@ The script will prompt you for some configuration values. If this is a test/eval
 - Rserve Server Port: 6311
 - Rserve User Name: rserve
 - Rserve User Password: rserve
+
+If desired, these default values can be configured by creating a ``default.config`` (example :download:`here <../_static/util/default.config>`) file in the installer's working directory with new values (if this file isn't present, the above defaults will be used).
+
+This allows the installer to be run in non-interactive mode (with ``./install -y -f > install.out 2> install.err``), which can allow for easier interaction with automated provisioning tools.
 
 **New, as of 4.3:**
 
@@ -83,7 +89,7 @@ Congratulations! You have a working Dataverse installation. Soon you'll be tweet
 
 Trouble? See if you find an answer in the troubleshooting section below.
 
-Next you'll want to check out the :doc:`config` section.
+Next you'll want to check out the :doc:`config` section, especially the section on security which reminds you to change the password above.
 
 Troubleshooting
 ---------------
@@ -151,4 +157,4 @@ Rerun Installer
 
 With all the data cleared out, you should be ready to rerun the installer per above.
 
-Related to all this is a series of scripts at https://github.com/IQSS/dataverse/blob/develop/scripts/deploy/phoenix.dataverse.org/deploy that Dataverse developers use have the test server http://phoenix.dataverse.org rise from the ashes before integration tests are run against it. Your mileage may vary. :)
+Related to all this is a series of scripts at https://github.com/IQSS/dataverse/blob/develop/scripts/deploy/phoenix.dataverse.org/deploy that Dataverse developers use have the test server http://phoenix.dataverse.org rise from the ashes before integration tests are run against it. Your mileage may vary. :) For more on this topic, see "Rebuilding Your Dev Environment" in the :doc:`/developers/dev-environment` section of the Developer Guide.

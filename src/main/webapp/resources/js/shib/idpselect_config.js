@@ -14,7 +14,7 @@ function IdPSelectUIParms() {
     // Approaching via the Discovery Protocol for example
     //this.defaultReturn = "https://example.org/Shibboleth.sso/DS?SAMLDS=1&target=https://example.org/secure";
 
-    this.defaultReturn = window.location.protocol + "//" + window.location.hostname + "/Shibboleth.sso/Login?SAMLDS=1&target=" + window.location.protocol + "//" + window.location.hostname + "/shib.xhtml" + shibRedirectPage;
+    this.defaultReturn = window.location.protocol + "//" + window.location.hostname + "/Shibboleth.sso/Login?SAMLDS=1&target=" + window.location.protocol + "//" + window.location.hostname + "/ms/ShibAttributesHandler" + shibRedirectPage;
     this.defaultReturnIDParam = null;
     this.helpURL = 'http://guides.dataverse.org/en/latest/user/account.html';
     this.ie6Hack = null;             // An array of structures to disable when drawing the pull down (needed to 
@@ -50,9 +50,11 @@ function IdPSelectUIParms() {
             'idpEntry.label': 'Or enter your institution\'s name.',
             'idpEntry.NoPreferred.label': 'Enter your institution\'s name and click "Continue" to log in via your institution\'s authentication system.',
             'idpList.label': 'Or select your institution from the list below.',
-            'idpList.NoPreferred.label': 'Select your institution and click "Continue" to log in via your institution\'s authentication system.',
-            'idpList.defaultOptionLabel': 'Please select your institution...',
-            'idpList.showList': 'Allow me to pick from a list',
+
+            'idpList.NoPreferred.label': 'Please use your institutional profile via SURFconext authentication system to login into DataverseNL account.',
+            'idpList.defaultOptionLabel': 'Please select federated service...',
+            'idpList.showList': ' ',
+
             'idpList.showSearch': 'Allow me to type the name of my institution',
             'submitButton.label': 'Continue',
             'helpText': 'Help',

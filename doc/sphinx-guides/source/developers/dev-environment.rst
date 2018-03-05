@@ -7,7 +7,7 @@ Development Environment
 Assumptions
 -----------
 
-This guide assumes you are using a Mac but we do have pages for :doc:`/developers/windows` and :doc:`/developers/ubuntu`.
+This guide assumes you are using a Mac. If you are using Windows or Linux, please reach out to other developers at https://groups.google.com/forum/#!forum/dataverse-dev
 
 Requirements
 ------------
@@ -74,11 +74,11 @@ Additional Tools
 
 Please see also the :doc:`/developers/tools` page, which lists additional tools that very useful but not essential.
 
-Setting up your dev environment
+Setting Up Your Dev Environment
 -------------------------------
 
-SSH keys
-~~~~~~~~
+Set Up SSH Keys
+~~~~~~~~~~~~~~~
 
 You can use git with passwords over HTTPS, but it's much nicer to set up SSH keys. https://github.com/settings/ssh is the place to manage the ssh keys GitHub knows about for you. That page also links to a nice howto: https://help.github.com/articles/generating-ssh-keys
 
@@ -135,7 +135,7 @@ Once Solr is up and running you should be able to see a "Solr Admin" dashboard a
 
 Once some dataverses, datasets, and files have been created and indexed, you can experiment with searches directly from Solr at http://localhost:8983/solr/#/collection1/query and look at the JSON output of searches, such as this wildcard search: http://localhost:8983/solr/collection1/select?q=*%3A*&wt=json&indent=true . You can also get JSON output of static fields Solr knows about: http://localhost:8983/solr/schema/fields
 
-Run installer
+Run Installer
 ~~~~~~~~~~~~~
 
 Once you install Glassfish and PostgreSQL, you need to configure the environment for the Dataverse app - configure the database connection, set some options, etc. We have a new installer script that should do it all for you. Again, assuming that the clone on the Dataverse repository was retrieved using NetBeans and that it is saved in the path ~/NetBeansProjects:
@@ -150,19 +150,8 @@ The script is a variation of the old installer from DVN 3.x that calls another s
 
 All the future changes to the configuration that are Glassfish-specific and can be done through ``asadmin`` should now go into ``scripts/install/glassfish-setup.sh``.
 
-Shibboleth
-----------
-
-If you are working on anything related to users, please keep in mind that your changes will likely affect Shibboleth users. Rather than setting up Shibboleth on your laptop, developers are advised to simply add a value to their database to enable Shibboleth "dev mode" like this:
-
-``curl http://localhost:8080/api/admin/settings/:DebugShibAccountType -X PUT -d RANDOM``
-
-For a list of possible values, please "find usages" on the settings key above and look at the enum.
-
-Now when you go to http://localhost:8080/shib.xhtml you should be prompted to create a Shibboleth account.
-
-Rebuilding your dev environment
--------------------------------
+Rebuilding Your Dev Environment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you have an old copy of the database and old Solr data and want to start fresh, here are the recommended steps: 
 
@@ -172,3 +161,35 @@ If you have an old copy of the database and old Solr data and want to start fres
 - confirm you are using the latest Dataverse-specific Solr schema.xml per the "Installing and Running Solr" section of this guide
 - confirm http://localhost:8080 is up
 - If you want to set some dataset-specific facets, go to the root dataverse (or any dataverse; the selections can be inherited) and click "General Information" and make choices under "Select Facets". There is a ticket to automate this: https://github.com/IQSS/dataverse/issues/619
+
+You may also find https://github.com/IQSS/dataverse/blob/develop/scripts/deploy/phoenix.dataverse.org/deploy and related scripts interesting because they demonstrate how we have at least partially automated the process of tearing down a Dataverse installation and having it rise again, hence the name "phoenix." See also "Fresh Reinstall" in the :doc:`/installation/installation-main` section of the Installation Guide.
+
+Shibboleth and OAuth
+--------------------
+
+If you are working on anything related to users, please keep in mind that your changes will likely affect Shibboleth and OAuth users. For some background on user accounts in Dataverse, see "Auth Modes: Local vs. Remote vs. Both" in the :doc:`/installation/config` section of the Installation Guide.
+
+Rather than setting up Shibboleth on your laptop, developers are advised to simply add a value to their database to enable Shibboleth "dev mode" like this:
+
+``curl http://localhost:8080/api/admin/settings/:DebugShibAccountType -X PUT -d RANDOM``
+
+For a list of possible values, please "find usages" on the settings key above and look at the enum.
+
+Now when you go to http://localhost:8080/shib.xhtml you should be prompted to create a Shibboleth account.
+
+OAuth is much more straightforward to get working on your laptop than Shibboleth. GitHub is a good identity provider to test with because you can easily request a Client ID and Client Secret that works against localhost. Follow the instructions in the :doc:`/installation/oauth2` section of the installation Guide and use "http://localhost:8080/oauth2/callback.xhtml" as the callback URL.
+
+In addition to setting up OAuth on your laptop for real per above, you can also use a dev/debug mode:
+
+``curl http://localhost:8080/api/admin/settings/:DebugOAuthAccountType -X PUT -d RANDOM_EMAIL2``
+
+For a list of possible values, please "find usages" on the settings key above and look at the enum.
+
+Now when you go to http://localhost:8080/oauth2/firstLogin.xhtml you should be prompted to create a Shibboleth account.
+
+Geoconnect
+----------
+
+Geoconnect works as a middle layer, allowing geospatial data files in Dataverse to be visualized with Harvard WorldMap. To set up a Geoconnect development environment, you can follow the steps outlined in the `local_setup.md <https://github.com/IQSS/geoconnect/blob/master/local_setup.md>`_ guide. You will need Python and a few other prerequisites.
+
+As mentioned under "Architecture and Components" in the :doc:`/installation/prep` section of the Installation Guide, Geoconnect is an optional component of Dataverse, so this section is only necessary to follow it you are working on an issue related to this feature.
