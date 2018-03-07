@@ -108,7 +108,7 @@ public class Shib implements java.io.Serializable {
     private String redirectPage;
 //    private boolean debug = false;
     private String emailAddress;
-    
+
     public enum State {
 
         INIT,
@@ -225,7 +225,6 @@ public class Shib implements java.io.Serializable {
             affiliationToDisplayAtConfirmation = affiliation;
             friendlyNameForInstitution = affiliation;
         }
-       
 //        emailAddress = "willFailBeanValidation"; // for testing createAuthenticatedUser exceptions
         displayInfo = new AuthenticatedUserDisplayInfo(firstName, lastName, emailAddress, affiliation, null);
 
@@ -298,14 +297,7 @@ public class Shib implements java.io.Serializable {
         logger.fine("redirectPage: " + redirectPage);
     }
 
-    private String getInstitutionMap(String schacHomeOrganization) {
-		if (schacHomeOrganization.equals("vu.nl"))
-			return "Vrije Universiteit Amsterdam";
-		
-		return schacHomeOrganization;
-	}
-
-	public String confirmAndCreateAccount() {
+    public String confirmAndCreateAccount() {
         ShibAuthenticationProvider shibAuthProvider = new ShibAuthenticationProvider();
         String lookupStringPerAuthProvider = userPersistentId;
         AuthenticatedUser au = null;
@@ -321,6 +313,10 @@ public class Shib implements java.io.Serializable {
         if (au != null) {
             logger.fine("created user " + au.getIdentifier());
             logInUserAndSetShibAttributes(au);
+            /**
+             * @todo Move this to
+             * AuthenticationServiceBean.createAuthenticatedUser
+             */
             userNotificationService.sendNotification(au,
                     new Timestamp(new Date().getTime()),
                     UserNotification.Type.CREATEACC, null);
