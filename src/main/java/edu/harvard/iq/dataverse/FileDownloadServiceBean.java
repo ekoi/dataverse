@@ -292,7 +292,7 @@ public class FileDownloadServiceBean implements java.io.Serializable {
         }
     }
 
-    private String  getFileNameDOI(DatasetVersion workingVersion) {
+    private String getFileNameDOI(DatasetVersion workingVersion) {
         Dataset ds = workingVersion.getDataset();
         return ds.getProtocol() + ":" + ds.getAuthority() + "_" + ds.getIdentifier().toString();
     }

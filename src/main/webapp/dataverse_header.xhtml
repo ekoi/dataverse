@@ -61,23 +61,21 @@
                                 <span class="glyphicon glyphicon-search"/> #{bundle.find}
                             </button>
                         </form>
+                        <ui:fragment rendered="#{!empty settingsWrapper.get(':NavbarAboutUrl')}">
+                        <li>
+                            <h:outputLink value="#{settingsWrapper.get(':NavbarAboutUrl')}" target="_blank">
+                                #{bundle['header.about']}
+                            </h:outputLink>
+                        </li>
+                        </ui:fragment>
 
-                            <ui:fragment rendered="#{!empty settingsWrapper.get(':NavbarAboutUrl')}">
+                        <li>
+                            <h:outputLink value="#{settingsWrapper.guidesBaseUrl}/#{systemConfig.guidesVersion}/user" target="_blank">
+                                #{bundle['header.guides.user']}
+                            </h:outputLink>
+                        </li>
+                           <!-- DANS - Just a link, no feedback dialog -->
                            <li>
-                               <h:outputLink value="#{settingsWrapper.get(':NavbarAboutUrl')}" target="_blank">
-
-                                   #{bundle['header.about']}
-                               </h:outputLink>
-                           </li>
-                           </ui:fragment>
-
-                           <li>
-                               <h:outputLink value="#{settingsWrapper.guidesBaseUrl}/#{systemConfig.guidesVersion}/user" target="_blank">
-                                   #{bundle['header.guides.user']}
-                               </h:outputLink>
-                           </li>
-
-                              <li>
                                <h:outputLink value="https://dans.knaw.nl/en/about/services/archiving-and-reusing-data/DataverseNL/support" target="_blank">
                                    #{bundle['header.support']}
                                </h:outputLink>
@@ -89,7 +87,7 @@
                                </h:outputLink>
                            </li>
                            <ui:fragment rendered="#{!dataverseSession.user.authenticated}">
-
+                               <!-- DANS - removed signup -->
                                <li>
                                    <h:outputLink value="/loginpage.xhtml?#{loginRedirectPage}">
                                        #{bundle.login}
