@@ -194,17 +194,6 @@
         </div>
 
         <div id="breadcrumbNavBlock" class="container" jsf:rendered="#{dataverseHeaderFragment.breadcrumbs.size() > 1}">
-            <!-- DANS addition -->
-            <script type="application/ld+json">{"@context":"http://schema.org","@type":"BreadcrumbList","itemListElement":[
-                        <ui:repeat value="#{dataverseHeaderFragment.breadcrumbs}" var="breadcrumb" varStatus="status">
-                        <ui:fragment rendered="#{!status.last}">
-                        <ui:fragment rendered="#{breadcrumb.dvObject.instanceofDataverse}">
-                        {"@type":"ListItem","position":"#{status.index+2}","item":{"@id":"https://dataverse.nl/dataverse/#{breadcrumb.dvObject.alias}","name":"#{breadcrumb.breadcrumbText}"}},
-                        </ui:fragment>
-                        </ui:fragment>
-                        </ui:repeat>
-                        {"@type":"ListItem","position":"1","item":{"@id":"https://dataverse.nl","name":"DataverseNL"}}]}</script>
-
             <ui:repeat value="#{dataverseHeaderFragment.breadcrumbs}" var="breadcrumb" varStatus="status">
                 <h:outputText value=" > " styleClass="breadcrumbCarrot" rendered="#{!status.first}"/>
                 <div class="breadcrumbBlock">
