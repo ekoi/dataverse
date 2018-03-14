@@ -56,6 +56,7 @@ function IdPSelectUIParms() {
             'idpEntry.NoPreferred.label': 'Enter your institution\'s name and click "Continue" to log in via your institution\'s authentication system.',
             'idpList.label': 'Or select your institution from the list below.',
 
+            // DANS specific
             'idpList.NoPreferred.label': 'Please use your institutional profile via SURFconext authentication system to login into DataverseNL account.',
             'idpList.defaultOptionLabel': 'Please select federated service...',
             'idpList.showList': ' ',

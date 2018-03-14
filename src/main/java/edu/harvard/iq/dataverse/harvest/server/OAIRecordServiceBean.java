@@ -30,7 +30,7 @@ import static javax.ejb.TransactionAttributeType.REQUIRES_NEW;
 import javax.inject.Named;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
-import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 import javax.persistence.TemporalType;
 
 /**
@@ -85,7 +85,7 @@ public class OAIRecordServiceBean implements java.io.Serializable {
         
         // create Map of OaiRecords
         List<OAIRecord> oaiRecords = findOaiRecordsBySetName( setName );
-        Map<String,OAIRecord> recordMap = new HashMap();
+        Map<String,OAIRecord> recordMap = new HashMap<>();
         if (oaiRecords != null) {
             for (OAIRecord record : oaiRecords) {
                 // look for duplicates here? delete?
@@ -279,7 +279,7 @@ public class OAIRecordServiceBean implements java.io.Serializable {
         logger.fine("findOAIRecordBySetNameandGlobalId; query: "+queryString+"; globalId: "+globalId+"; setName: "+setName);
                 
         
-        Query query = em.createQuery(queryString).setParameter("globalId",globalId);
+        TypedQuery query = em.createQuery(queryString, OAIRecord.class).setParameter("globalId",globalId);
         if (setName != null) { query.setParameter("setName",setName); }        
         
         try {
@@ -295,7 +295,7 @@ public class OAIRecordServiceBean implements java.io.Serializable {
         String query="SELECT object(h) from OAIRecord h where h.globalId = :globalId";
         List<OAIRecord> oaiRecords = null;
         try {
-            oaiRecords = em.createQuery(query).setParameter("globalId",globalId).getResultList();
+            oaiRecords = em.createQuery(query, OAIRecord.class).setParameter("globalId",globalId).getResultList();
         } catch (Exception ex) {
             // Do nothing, return null. 
         }
@@ -332,7 +332,7 @@ public class OAIRecordServiceBean implements java.io.Serializable {
 
         logger.fine("Query: "+queryString);
         
-        Query query = em.createQuery(queryString);
+        TypedQuery<OAIRecord> query = em.createQuery(queryString, OAIRecord.class);
         if (setName != null) { query.setParameter("setName",setName); }
         if (from != null) { query.setParameter("from",from,TemporalType.TIMESTAMP); }
         // In order to achieve inclusivity on the "until" matching, we need to do 
@@ -380,7 +380,7 @@ public class OAIRecordServiceBean implements java.io.Serializable {
         queryString += setName != null ? " and (h.setName = :setName)" : "and (h.setName is null)";
         logger.fine("Query: "+queryString);
         
-        Query query = em.createQuery(queryString);
+        TypedQuery<OAIRecord> query = em.createQuery(queryString, OAIRecord.class);
         if (setName != null) { query.setParameter("setName",setName); }
         
         try {
@@ -399,7 +399,7 @@ public class OAIRecordServiceBean implements java.io.Serializable {
         queryString += setName != null ? " and (h.setName = :setName)" : "and (h.setName is null)";
         logger.fine("Query: "+queryString);
         
-        Query query = em.createQuery(queryString);
+        TypedQuery<OAIRecord> query = em.createQuery(queryString, OAIRecord.class);
         if (setName != null) { query.setParameter("setName",setName); }
         
         try {
