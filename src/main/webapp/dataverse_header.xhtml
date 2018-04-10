@@ -71,13 +71,12 @@
                                 #{bundle['header.guides.user']}
                             </h:outputLink>
                         </li>
-                        <!-- DANS - Just a link, no feedback dialog -->
                         <ui:fragment rendered="#{!empty settingsWrapper.get(':NavbarSupportUrl')}">
-                        <li>
-                            <h:outputLink value="#{settingsWrapper.get(':NavbarSupportUrl')}" target="_blank">
-                                   #{bundle['header.support']}
-                            </h:outputLink>
-                        </li>
+                            <li>
+                                <h:outputLink value="#{settingsWrapper.get(':NavbarSupportUrl')}" target="_blank">
+                                    #{bundle['header.support']}
+                                </h:outputLink>
+                            </li>
                         </ui:fragment>
                         <ui:fragment rendered="#{empty settingsWrapper.get(':NavbarSupportUrl')}">
                             <o:form useRequestURI="true" class="navbar-form navbar-left navbar-form-link">
