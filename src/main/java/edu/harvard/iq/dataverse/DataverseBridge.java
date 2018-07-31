@@ -20,12 +20,10 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
-import javax.annotation.PostConstruct;
 import javax.ejb.EJB;
 import javax.faces.application.FacesMessage;
 import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
-import javax.faces.event.ActionEvent;
 import javax.faces.view.ViewScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -48,7 +46,7 @@ import java.util.logging.Logger;
  */
 @ViewScoped
 @Named
-public class DataverseBridgeDialog implements java.io.Serializable {
+public class DataverseBridge implements java.io.Serializable {
 
     @EJB
     DatasetServiceBean datasetService;
@@ -63,26 +61,29 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     @EJB
     AuthenticationServiceBean authService;
 
-    private Logger logger = Logger.getLogger(DataverseBridgeDialog.class.getCanonicalName());
+    private Logger logger = Logger.getLogger(DataverseBridge.class.getCanonicalName());
     private String datasetVersionFriendlyNumber;
     private String tdrUsername;
     private String tdrPassword;
+
+    public String getPersistentId() {
+        return persistentId;
+    }
+
     private String persistentId;
 
-    private boolean dataverseBridgeEnabled;
+//    private boolean dataverseBridgeEnabled;
 
+    public static String STATE_IN_PROGRESS = "IN-PROGRESS";
+    public static String STATE_FAILED = "FAILED";
     private static String STATE_ARCHIVED = "ARCHIVED";
-    private static String STATE_INPROGRESS = "IN-PROGRESS";
-    private static String STATE_FAILED = "FAILED";
+    private static String STATE_REJECTED = "REJECTED";
 
-    @PostConstruct
-    public void init() {
-        if (dataverseSession.getUser().isAuthenticated()) {
-            dataverseBridgeEnabled = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null
-                                        && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null
-                                        && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null;
-
-        }
+    public DataverseBridge(){}
+    public DataverseBridge(SettingsServiceBean settingsService, DatasetServiceBean datasetService, DatasetVersionServiceBean datasetVersionService){
+        this.settingsService = settingsService;
+        this.datasetService = datasetService;
+        this.datasetVersionService = datasetVersionService;
     }
 
     public void reload(String path) throws IOException {
@@ -90,20 +91,23 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         ec.redirect(path);
     }
 
-    public boolean isDataverseBridgeEnabled() {
-        return dataverseBridgeEnabled;
-    }
+//    public boolean isDataverseBridgeEnabled() {
+//        return dataverseBridgeEnabled;
+//    }
 
     public void ingestToTdr() {
         logger.info("INGEST TO TDR");
         try {
-            JsonObject jsonObjectIngestResponse = getJsonObjectOfPostResponse("/archive/create");
+            JsonObject jsonObjectIngestResponse = retrievePostResponseAsJsonObject("/archive/create");
             if (jsonObjectIngestResponse != null) {
                 Dataset dataset = datasetService.findByGlobalId(persistentId);
                 DatasetVersion dv = datasetVersionService.findByFriendlyVersionNumber(dataset.getId(), datasetVersionFriendlyNumber);
-                dv.setArchiveNote(STATE_INPROGRESS);
+                dv.setArchiveNote(STATE_IN_PROGRESS);
                 datasetVersionService.update(dv);
+                logger.info("Archive is in process..... Please Refresh it.");
                 checkArchivingProgress();
+            } else {
+                addMessage(FacesMessage.SEVERITY_ERROR,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down"), null);
             }
 
         } catch (IOException e) {
@@ -112,84 +116,111 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                 addMessage(FacesMessage.SEVERITY_ERROR,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down"), null);
 
         }
+    }
 
-        logger.info("Archive is in process..... Please Refresh it.");
+    public void checkArchivingProgress(String persistentId, String datasetVersionFriendlyNumber) {
+        this.setDatasetVersionFriendlyNumber(datasetVersionFriendlyNumber);
+        this.setPersistentId(persistentId);
+        try {
+            String state = updateArchivingState();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void checkArchivingProgress() {
-        final ArchivingProgressState archivingProgressState = new ArchivingProgressState();
+        //final ArchivingProgressState archivingProgressState = new ArchivingProgressState();
         Flowable.fromCallable(() -> {
-            String state = STATE_INPROGRESS;
-            while (state.equals(STATE_INPROGRESS)) {
-                logger.info("Check archiving state....");
-                JsonObject jsonObjectArchived = getJsonObjectOfGetResponse(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl, "") + "/archive/state?srcXml="
-                        + URLEncoder.encode(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) + persistentId, StandardCharsets.UTF_8.toString())
-                        + "&srcVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetIri=" + URLEncoder.encode(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrIri), StandardCharsets.UTF_8.toString()));
-                if(jsonObjectArchived == null) {
-                    state = STATE_FAILED;
-                    archivingProgressState.setFinish(true);
-                    updateDataverseVersionToFailed();
-                    logger.severe("Archiving is failed.");
-                    break;
-                }
-
-                state = jsonObjectArchived.getString("state", "");
-                if (state.equals(STATE_INPROGRESS))
-                    Thread.sleep(15000);
-                else {
-                    archivingProgressState.setFinish(true);
-                    if (state.equals(STATE_ARCHIVED)) {
-                        logger.info("Update archiving state in the datasetVersion table.");
-                        updateDatasetVersionToArchived(jsonObjectArchived);
-                        //The following code is commented out since it will not work: FacesMessage inside a new threads
-                        //addMessage(FacesMessage.SEVERITY_INFO,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.success.archived"), null);
-                    } else {
-                        logger.warning("ARCHIVING FAILED");
-                        updateDataverseVersionToFailed();
-                        //The following code is commented out since it will not work: FacesMessage inside a new threads
-                        //addMessage(FacesMessage.SEVERITY_INFO,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.failed.archived"), null);
-                    }
-                }
+            String state = STATE_IN_PROGRESS;
+            while (state.equals(STATE_IN_PROGRESS)) {
+                state = updateArchivingState();
+                if (state == null) break;
+                if (state.equals(STATE_IN_PROGRESS))
+                    Thread.sleep(60000);
             }
-            return archivingProgressState;
+            return state;
         })
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.single())
-                .doOnComplete(new Action() {
-                    @Override
-                    public void run()  {
-                            if (archivingProgressState.isFinish()){
-                                //check state, it can be failed or archived
-                                //send mail to ingester
-                                logger.info("Archiving finish.");
-                            }
-                    }
-                })
+                .onErrorResumeNext(
+                        throwable -> {
+                            String es = throwable.toString();
+                            logger.severe(es);
+                        }
+                )
+//                .doOnComplete(new Action() {
+//                    @Override
+//                    public void run()  {
+//                            if (archivingProgressState.isFinish()){
+//                                //check state, it can be failed or archived
+//                                //send mail to ingester
+//                                logger.info("Archiving finish.");
+//                            }
+//                    }
+//                })
                 .subscribe();
     }
 
-    private void updateDataverseVersionToFailed() {
+    private String updateArchivingState() throws Exception {
+        String state;
+        logger.info("Check archiving state....");
+        JsonObject jsonObjectArchived = getArchivingStatusAsJsonObject();
+        if(jsonObjectArchived == null) {
+            state = STATE_FAILED;
+            //archivingProgressState.setFinish(true);
+            updateDataverseVersionState(state);
+            logger.severe("Archiving is failed.");
+            return null;
+        }
+
+        state = jsonObjectArchived.getString("state", "");
+        if (state.equals(STATE_ARCHIVED)) {
+            //archivingProgressState.setFinish(true);
+            logger.info("Update archiving state in the datasetVersion table.");
+            updateDatasetVersionToArchived(jsonObjectArchived);
+            //The following code is commented since it will not work: FacesMessage inside a new threads
+            //addMessage(FacesMessage.SEVERITY_INFO,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.success.archived"), null);
+        }else {
+                logger.info("ARCHIVING state: " + state);
+                updateDataverseVersionState(state);
+                //The following code is commented out since it will not work: FacesMessage inside a new threads
+                //addMessage(FacesMessage.SEVERITY_INFO,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.failed.archived"), null);
+
+        }
+        return state;
+    }
+
+    private JsonObject getArchivingStatusAsJsonObject() throws Exception {
+        return retrieveGetResponseAsJsonObject(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl, "") + "/archive/state?srcXml="
+                            + URLEncoder.encode(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) + persistentId, StandardCharsets.UTF_8.toString())
+                            + "&srcVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetIri=" + URLEncoder.encode(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrIri), StandardCharsets.UTF_8.toString()));
+    }
+
+    private String getDatasetVersionNote() {
         Dataset dataset = datasetService.findByGlobalId(persistentId);
         DatasetVersion dv = datasetVersionService.findByFriendlyVersionNumber(dataset.getId(), datasetVersionFriendlyNumber);
-        dv.setArchiveNote(STATE_FAILED);
+        return dv.getVersionNote();
+    }
+    private void updateDataverseVersionState(String state) {
+        Dataset dataset = datasetService.findByGlobalId(persistentId);
+        DatasetVersion dv = datasetVersionService.findByFriendlyVersionNumber(dataset.getId(), datasetVersionFriendlyNumber);
+        dv.setArchiveTime(new Date());
+        dv.setArchiveNote(state);
         datasetVersionService.update(dv);
     }
 
     private void updateDatasetVersionToArchived(JsonObject jsonObjectArchived) {
-        Date date = new Date();
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MMMM d, yyyy");
-        String archiveNote = "<a href=\"" + jsonObjectArchived.getString("landingPage", "") + "\">" +
+        String archiveNoteState = jsonObjectArchived.getString("landingPage", "") + "#" +
                                 jsonObjectArchived.getString("doi", "") +
-                             "<a>" + "<br/>" + simpleDateFormat.format(date);
-        logger.info(archiveNote);
-        Dataset dataset = datasetService.findByGlobalId(persistentId);
-        DatasetVersion dv = datasetVersionService.findByFriendlyVersionNumber(dataset.getId(), datasetVersionFriendlyNumber);
-        dv.setArchiveTime(date);
-        dv.setArchiveNote(archiveNote);
-        datasetVersionService.update(dv);
+                                "#" + simpleDateFormat.format(new Date());
+        logger.info(archiveNoteState);
+        updateDataverseVersionState(archiveNoteState);
+        logger.info("Send mail to ingester");
+        //send mail to ingester
     }
 
-    private JsonObject getJsonObjectOfGetResponse(String path) throws Exception {
+    private JsonObject retrieveGetResponseAsJsonObject(String path) throws Exception {
         JsonObject jsonObject = null;
         JsonReader reader = null;
         CloseableHttpClient httpClient = HttpClients.createDefault();
@@ -213,7 +244,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         return jsonObject;
     }
 
-    private JsonObject getJsonObjectOfPostResponse(String path) throws IOException {
+    private JsonObject retrievePostResponseAsJsonObject(String path) throws IOException {
         JsonObject jsonObject = null;
         CloseableHttpResponse httpResponse = getCloseableHttpResponse(path);
         switch (httpResponse.getStatusLine().getStatusCode()) {
@@ -221,6 +252,10 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                                         jsonObject = reader.readObject();
                                         reader.close();
                                         break;
+            case HttpStatus.SC_OK: JsonReader readerOk = Json.createReader(new StringReader(readEntityAsString(httpResponse.getEntity())));
+                                    jsonObject = readerOk.readObject();
+                                    readerOk.close();
+                                    break;
 
             case HttpStatus.SC_FORBIDDEN: addMessage(FacesMessage.SEVERITY_ERROR,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdrcredentias"), null);
                                         break;
@@ -388,18 +423,6 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
         public TdrData getTdrData() {
             return tdrData;
-        }
-    }
-
-    private class ArchivingProgressState {
-        private boolean finish;
-
-        public boolean isFinish() {
-            return finish;
-        }
-
-        public void setFinish(boolean finish) {
-            this.finish = finish;
         }
     }
 

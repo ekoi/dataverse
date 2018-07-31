@@ -5,19 +5,19 @@
                 xmlns:p="http://primefaces.org/ui"
                 xmlns:jsf="http://xmlns.jcp.org/jsf">
     <!-- Dialog DataverseBridge Form -->
-    <p:dialog id="dataverseBridgeDialog" header="Archiving '#{DatasetPage.persistentId}' Dataset" widgetVar="tdrForm" modal="true">
+    <p:dialog id="dataverseBridge" header="Archiving '#{DatasetPage.persistentId}' Dataset" widgetVar="tdrForm" modal="true">
         <p:ajax event="close" update=":datasetForm" />
         <p:fragment>
             <h:form class="form-horizontal"  autocomplete="off">
                 <h:panelGrid columns="3" cellpadding="5">
 
                     <p:outputLabel for="tdrUsername" value="#{bundle['dataset.archive.dialog.label.tdrusername']}"/>
-                    <p:inputText id="tdrUsername" value="#{dataverseBridgeDialog.tdrUsername}"
+                    <p:inputText id="tdrUsername" value="#{dataverseBridge.tdrUsername}"
                                  requiredMessage="Please fill in your TDR username" required="true"/>
                     <h:message for="tdrUsername" styleClass="bg-danger text-danger"/>
 
                     <p:outputLabel for="password" value="#{bundle['dataset.archive.dialog.label.tdrpassword']}"/>
-                    <p:password id="password" value="#{dataverseBridgeDialog.tdrPassword}"
+                    <p:password id="password" value="#{dataverseBridge.tdrPassword}"
                                 requiredMessage="Please fill in your TDR password" required="true"/>
                     <h:message for="password" styleClass="bg-danger text-danger"/>
                 </h:panelGrid>
@@ -26,7 +26,7 @@
                 <!-- send | cancel buttons -->
                 <div class="button-block">
                     <p:commandLink styleClass="btn btn-default" value="#{bundle['dataset.archive.dialog.button.ingest']}"
-                                   update="@form,:messagePanel" oncomplete="if (args &amp;&amp; !args.validationFailed) PF('tdrForm').hide();" actionListener="#{dataverseBridgeDialog.ingestToTdr}">
+                                   update="@form,:messagePanel" oncomplete="if (args &amp;&amp; !args.validationFailed) PF('tdrForm').hide();" actionListener="#{dataverseBridge.ingestToTdr}">
                         <f:param name="DO_VALIDATION" value="true"/>
                     </p:commandLink>
                     <p:commandButton value="#{bundle.cancel}" onclick="PF('tdrForm').hide();PF('blockDatasetForm').hide();" type="button" />

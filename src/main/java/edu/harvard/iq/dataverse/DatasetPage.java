@@ -1531,8 +1531,24 @@ public class DatasetPage implements java.io.Serializable {
 
         configureTools = externalToolService.findByType(ExternalTool.Type.CONFIGURE);
         exploreTools = externalToolService.findByType(ExternalTool.Type.EXPLORE);
+        if (isSessionUserAuthenticated()) {
+            dataverseBridgeEnabled = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null
+                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null
+                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null;
+            if (dataverseBridgeEnabled && workingVersion.isReleased()
+                    && workingVersion.getArchiveNote() != null
+                    && (workingVersion.getArchiveNote().equals(DataverseBridge.STATE_IN_PROGRESS) || workingVersion.getArchiveNote().equals(DataverseBridge.STATE_FAILED))) {
+                DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService);
+                dbd.checkArchivingProgress(persistentId, workingVersion.getFriendlyVersionNumber());
+            }
+        }
 
         return null;
+    }
+
+    private boolean dataverseBridgeEnabled;
+    public boolean isDataverseBridgeEnabled() {
+        return dataverseBridgeEnabled;
     }
     
     public boolean isReadOnly() {
