@@ -241,7 +241,7 @@ public class OAIRecordServiceBean implements java.io.Serializable {
     // (why these need to be in an EJB bean at all, what's wrong with keeping 
     // them in the loadable ExportService? - since we need to modify the 
     // "last export" timestamp on the dataset, being able to do that in the 
-    // @EJB context is convenient. 
+    // @EJB context is convenient. /export_schema.org
     
     public void exportAllFormats(Dataset dataset) {
         try {
