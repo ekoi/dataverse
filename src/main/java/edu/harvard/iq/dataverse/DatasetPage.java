@@ -174,6 +174,9 @@ public class DatasetPage implements java.io.Serializable {
     @EJB
     ExternalToolServiceBean externalToolService;
 
+    @EJB
+    MailServiceBean mailServiceBean;
+
     @Inject
     DataverseRequestServiceBean dvRequestService;
     @Inject
@@ -1531,10 +1534,36 @@ public class DatasetPage implements java.io.Serializable {
 
         configureTools = externalToolService.findByType(ExternalTool.Type.CONFIGURE);
         exploreTools = externalToolService.findByType(ExternalTool.Type.EXPLORE);
+        if (isSessionUserAuthenticated()) {
+            dataverseBridgeEnabled = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null
+                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null
+                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null;
+            if (dataverseBridgeEnabled && workingVersion.isReleased()
+                    && workingVersion.getArchiveNote() != null
+                    && (workingVersion.getArchiveNote().equals(DataverseBridge.StateEnum.IN_PROGRESS.toString()) || workingVersion.getArchiveNote().equals(DataverseBridge.StateEnum.FAILED.toString()))) {
+                DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
+                DataverseBridge.StateEnum dbdState = dbd.checkArchivingProgress(persistentId, workingVersion.getFriendlyVersionNumber());
+                switch (dbdState) {
+                    case BRIDGE_DOWN:
+                        dbd.addMessage(FacesMessage.SEVERITY_ERROR,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down"), null);
+                        break;
+                    case TDR_DOWN:
+                        dbd.addMessage(FacesMessage.SEVERITY_ERROR,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.down"), null);
+                        break;
+                    default: //do nothing
+                }
+
+            }
+        }
 
         return null;
     }
-    
+
+    private boolean dataverseBridgeEnabled;
+    public boolean isDataverseBridgeEnabled() {
+        return dataverseBridgeEnabled;
+    }
+
     public boolean isReadOnly() {
         return readOnly; 
     }

@@ -347,8 +347,23 @@ public class SettingsServiceBean {
         /**
          * Configurable text for alert/info message on passwordreset.xhtml when users are required to update their password.
          */
-        PVCustomPasswordResetAlertMessage
-        ;
+        PVCustomPasswordResetAlertMessage,
+
+        //Actually, it should use the systemConfig.getDataverseSiteUrl() but unfortunately it forced to use https,
+        // so we cannot use it in ddvn
+        DataverseDdiExportBaseURL,
+
+        /*
+        DataverseBridge location
+         */
+        DataverseBridgeUrl,
+
+        /*
+        DataverseBridge TDR IRI
+        http://deasy.dans.knaw.nl/sword2/collection/1
+         */
+        DataverseBridgeTdrIri;
+
 
         @Override
         public String toString() {
