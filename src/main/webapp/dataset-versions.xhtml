@@ -145,9 +145,11 @@
 
         <!-- DANS DataverseBridge - archive column -->
         <c:set var="archiveNoteArray" value="#{fn:split(versionTab.archiveNote,'#')}"/>
+        <c:set var="tdrText" value="&lt;a target=&quot;_blank&quot; href=&quot;#{archiveNoteArray[0]}&quot;&gt;#{archiveNoteArray[1]}&lt;/a&gt;&lt;br/&gt;#{archiveNoteArray[2]}"/>
+        <c:set var="archiveNoteDisplayText" value="#{(fn:length(archiveNoteArray) == 3) ? tdrText:versionTab.archiveNote }"/>
         <p:column headerText="Archived" class="col-sm-2">
-            <ui:fragment rendered="#{ fn:length(archiveNoteArray) == 3 }">
-                <h:outputText id="archived" value="&lt;a target=&quot;_blank&quot; href=&quot;#{archiveNoteArray[0]}&quot;&gt;#{archiveNoteArray[1]}&lt;/a&gt;&lt;br/&gt;#{archiveNoteArray[2]}"  escape="false"/>
+            <ui:fragment>
+                <h:outputText id="archived" value="${archiveNoteDisplayText}" escape="false"/>
             </ui:fragment>
         </p:column>
         <!-- end: DANS archive column -->

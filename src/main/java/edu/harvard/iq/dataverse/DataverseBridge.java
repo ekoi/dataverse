@@ -2,6 +2,7 @@ package edu.harvard.iq.dataverse;
 
 import edu.harvard.iq.dataverse.authorization.AuthenticationServiceBean;
 import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
+import edu.harvard.iq.dataverse.util.BundleUtil;
 import edu.harvard.iq.dataverse.util.MailUtil;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
@@ -56,7 +57,7 @@ public class DataverseBridge implements java.io.Serializable {
         TDR_DOWN("TDR-DOWN"),
         INVALID_USER_CREDENTIAL("INVALID-USER-CREDENTIAL"),
         REQUEST_TIME_OUT("REQUEST-TIME-OUT"),
-        UNKNOWN_ERROS("UNKNOWN-ERROR"),
+        UNKNOWN_ERROR("UNKNOWN-ERROR"),
         BRIDGE_DOWN("BRIDGE-DOWN");
         private String value;
 
@@ -94,13 +95,13 @@ public class DataverseBridge implements java.io.Serializable {
 
         } catch (IOException e) {
             logger.severe(e.getMessage());
-            return StateEnum.UNKNOWN_ERROS;
+            return StateEnum.UNKNOWN_ERROR;
 
         }
     }
 
     public StateEnum checkArchivingProgress(String persistentId, String datasetVersionFriendlyNumber) {
-        String state;
+        StateEnum state = StateEnum.UNKNOWN_ERROR;
         logger.info("Check archiving state....");
         JsonObject jsonObjectArchived = null;
         String path = null;
@@ -109,44 +110,79 @@ public class DataverseBridge implements java.io.Serializable {
                     + URLEncoder.encode(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) + persistentId, StandardCharsets.UTF_8.toString())
                     + "&srcVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetIri=" + URLEncoder.encode(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrIri), StandardCharsets.UTF_8.toString());
             jsonObjectArchived = retrieveGETResponseAsJsonObject(path);
+            if (jsonObjectArchived != null) {
+               state = StateEnum.fromValue(jsonObjectArchived.getString("state", "UNKNOWN-ERROR"));
+               if (state == StateEnum.ARCHIVED) {
+                    logger.info("Update archiving state in the datasetVersion table.");
+                    updateDatasetVersionToArchived(persistentId, datasetVersionFriendlyNumber, jsonObjectArchived);
+                }
+            }
+
         } catch (UnsupportedEncodingException e) {
             logger.severe(e.getMessage());
-
+            state = StateEnum.UNKNOWN_ERROR;
         } catch (IOException e) {
-            if (e.getMessage().contains("Connection refused")) {
-                //send mail to dataverseAdmin
-                //authService.getAdminUser().getEmail(); we cannot use this method since it will search superuser and superuser can be more than 1
-
-                String systemEmail = settingsService.getValueForKey(SettingsServiceBean.Key.SystemEmail);
-                InternetAddress systemAddress = MailUtil.parseSystemAddress(systemEmail);
-                mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail(), "FATAL ERROR ", e.getMessage());
-                return StateEnum.BRIDGE_DOWN;
-            }
+            if (e.getMessage().contains("Connection refused"))
+                state = StateEnum.BRIDGE_DOWN;
         }
 
-        if(jsonObjectArchived == null) {
-            state = StateEnum.FAILED.value;
-            //archivingProgressState.setFinish(true);
-            updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state);
-            logger.severe("Archiving is failed.");
-            return StateEnum.UNKNOWN_ERROS;
-        }
 
-        state = jsonObjectArchived.getString("state", "");
-        if (state.equals(StateEnum.ARCHIVED.value)) {
-            //archivingProgressState.setFinish(true);
-            logger.info("Update archiving state in the datasetVersion table.");
-            updateDatasetVersionToArchived(persistentId, datasetVersionFriendlyNumber, jsonObjectArchived);
-            //The following code is commented since it will not work: FacesMessage inside a new threads
-            //addMessage(FacesMessage.SEVERITY_INFO,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.success.archived"), null);
-        }else {
+        if (state != StateEnum.ARCHIVED) {
             logger.info("ARCHIVING state: " + state);
-            updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state);
-            //The following code is commented out since it will not work: FacesMessage inside a new threads
-            //addMessage(FacesMessage.SEVERITY_INFO,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.failed.archived"), null);
-
+            updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
         }
-        return StateEnum.UNKNOWN_ERROS;
+        return state;
+    }
+
+    private void sendMail(String subject, String msg) {
+        String systemEmail = settingsService.getValueForKey(SettingsServiceBean.Key.SystemEmail);
+        InternetAddress systemAddress = MailUtil.parseSystemAddress(systemEmail);
+        mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail(), subject, msg);
+        logger.severe(msg);
+    }
+
+    public void updateArchivenoteAndDisplayMessage(String persistentId, String datasetVersionFriendlyNumber, StateEnum state) {
+        String msg = "";
+        switch (state) {
+            case BRIDGE_DOWN:
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down");
+                break;
+            case TDR_DOWN:
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.down");
+                break;
+            case REQUEST_TIME_OUT:
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.down");
+                break;
+            case INVALID_USER_CREDENTIAL:
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdrcredentias");
+                break;
+            case REJECTED:
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.rejected");
+                updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
+                break;
+            case IN_PROGRESS:
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress");
+                updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
+                break;
+            case INVALID:
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.invalid");
+                updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
+                break;
+            case ERROR:
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.tdr.error");
+                break;
+            case UNKNOWN_ERROR:
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown");
+                break;
+            default: //do nothing
+        }
+
+        if (state != StateEnum.IN_PROGRESS) {
+            sendMail(state.value, msg);
+            addMessage(FacesMessage.SEVERITY_ERROR, msg,null);
+        }
+//        else
+//            addMessage(FacesMessage.SEVERITY_INFO, msg,null);
     }
 
     private void updateDataverseVersionState(String persistentId, String datasetVersionFriendlyNumber, String state) {
@@ -163,7 +199,7 @@ public class DataverseBridge implements java.io.Serializable {
                 jsonObjectArchived.getString("doi", "") +
                 "#" + simpleDateFormat.format(new Date());
         logger.info(archiveNoteState);
-        updateDataverseVersionState(persistentId, archiveNoteState, datasetVersionFriendlyNumber);
+        updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, archiveNoteState);
         logger.info("Send mail to ingester");
         //send mail to ingester
     }
@@ -198,25 +234,22 @@ public class DataverseBridge implements java.io.Serializable {
             switch (httpClient.execute(httpPost).getStatusLine().getStatusCode()) {
                 case HttpStatus.SC_CREATED:
                     return StateEnum.IN_PROGRESS;
-
+                case HttpStatus.SC_OK:
+                    return StateEnum.IN_PROGRESS;
                 case HttpStatus.SC_FORBIDDEN:
                     return StateEnum.INVALID_USER_CREDENTIAL;
-
                 case HttpStatus.SC_REQUEST_TIMEOUT:
                     return StateEnum.REQUEST_TIME_OUT;
             }
         } catch (IOException e) {
             if (e.getMessage().contains("Connection refused")) {
-                //send mail to dataverseAdmin
-                //authService.getAdminUser().getEmail(); we cannot use this method since it will search superuser and superuser can be more than 1
-
                 String systemEmail = settingsService.getValueForKey(SettingsServiceBean.Key.SystemEmail);
                 InternetAddress systemAddress = MailUtil.parseSystemAddress(systemEmail);
                 mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail(), "FATAL ERROR ", e.getMessage());
                 return StateEnum.BRIDGE_DOWN;
             }
         }
-        return StateEnum.UNKNOWN_ERROS;
+        return StateEnum.UNKNOWN_ERROR;
 
     }
 

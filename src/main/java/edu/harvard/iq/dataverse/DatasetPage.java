@@ -1542,16 +1542,7 @@ public class DatasetPage implements java.io.Serializable {
                     && workingVersion.getArchiveNote() != null
                     && (workingVersion.getArchiveNote().equals(DataverseBridge.StateEnum.IN_PROGRESS.toString()) || workingVersion.getArchiveNote().equals(DataverseBridge.StateEnum.FAILED.toString()))) {
                 DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
-                DataverseBridge.StateEnum dbdState = dbd.checkArchivingProgress(persistentId, workingVersion.getFriendlyVersionNumber());
-                switch (dbdState) {
-                    case BRIDGE_DOWN:
-                        dbd.addMessage(FacesMessage.SEVERITY_ERROR,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down"), null);
-                        break;
-                    case TDR_DOWN:
-                        dbd.addMessage(FacesMessage.SEVERITY_ERROR,BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.down"), null);
-                        break;
-                    default: //do nothing
-                }
+                dbd.checkArchivingProgress(persistentId, workingVersion.getFriendlyVersionNumber());
 
             }
         }
