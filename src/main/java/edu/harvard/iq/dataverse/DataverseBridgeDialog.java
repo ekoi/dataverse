@@ -12,6 +12,7 @@ import io.reactivex.schedulers.Schedulers;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 
+import javax.annotation.PostConstruct;
 import javax.ejb.EJB;
 import javax.faces.application.FacesMessage;
 import javax.faces.context.ExternalContext;
@@ -21,7 +22,11 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -51,12 +56,23 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     private String datasetVersionFriendlyNumber;
     private String tdrUsername;
     private String tdrPassword;
+    private Map<String, String> tdrNames = new HashMap<String, String>();
+    private String tdrName;
 
     public String getPersistentId() {
         return persistentId;
     }
 
     private String persistentId;
+
+    @PostConstruct
+    public void init() {
+        if (dataverseSession.getUser().isAuthenticated()) {
+            String tdrs = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrs, "EASY");
+            tdrNames = Arrays.asList(tdrs.split(",")).stream().collect(Collectors.toMap(e -> e, e->e));
+            tdrName = "EASY";//default
+        }
+    }
 
 
     public void reload(String path) throws IOException {
@@ -67,46 +83,49 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
     public void ingestToTdr() {
         logger.info("INGEST TO TDR");
-        DataverseBridge.StateEnum state;
-        DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
-        try {
-            state = dbd.ingestToTdr(composeJsonIngestData());
-        } catch (IOException e) {
-            logger.severe(e.getMessage());
-            state = DataverseBridge.StateEnum.UNKNOWN_ERROR;
-        }
-        dbd.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
-        if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
-            Flowable.fromCallable(() -> {
-                DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
-                while (currentState.equals(DataverseBridge.StateEnum.IN_PROGRESS)) {
-                    Thread.sleep(10000);
-                    logger.info(".... Cheking Archiving Progress .....");
-                    currentState = dbd.checkArchivingProgress(persistentId, datasetVersionFriendlyNumber);
-                }
-                return currentState;
-            })
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(Schedulers.single())
-                    .onErrorResumeNext(
-                            throwable -> {
-                                String es = throwable.toString();
-                                logger.severe(es);
-                            }
-                    )
-                .doOnComplete(new Action() {
-                    @Override
-                    public void run()  {
-                           // if (archivingProgressState.isFinish()){
+        if (!tdrName.equals("EASY"))
+            addMessage(FacesMessage.SEVERITY_INFO, "'" + tdrName + " repository is currently unavailable." , "Please use 'EASY repository'");
+        else {
+            DataverseBridge.StateEnum state;
+            DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
+            try {
+                state = dbd.ingestToTdr(composeJsonIngestData());
+            } catch (IOException e) {
+                logger.severe(e.getMessage());
+                state = DataverseBridge.StateEnum.UNKNOWN_ERROR;
+            }
+            dbd.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
+            if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
+                Flowable.fromCallable(() -> {
+                    DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
+                    while (currentState.equals(DataverseBridge.StateEnum.IN_PROGRESS)) {
+                        Thread.sleep(10000);
+                        logger.info(".... Cheking Archiving Progress .....");
+                        currentState = dbd.checkArchivingProgress(persistentId, datasetVersionFriendlyNumber);
+                    }
+                    return currentState;
+                })
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(Schedulers.single())
+                        .onErrorResumeNext(
+                                throwable -> {
+                                    String es = throwable.toString();
+                                    logger.severe(es);
+                                }
+                        )
+                        .doOnComplete(new Action() {
+                            @Override
+                            public void run() {
+                                // if (archivingProgressState.isFinish()){
                                 //check state, it can be failed or archived
                                 //send mail to ingester
                                 logger.info("===== Archiving finish ======");
-                            //}
-                    }
-                })
-                    .subscribe();
+                                //}
+                            }
+                        })
+                        .subscribe();
+            }
         }
-
     }
 /*
     public void checkArchivingProgress() {
@@ -211,6 +230,22 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
     public void setPersistentId(String persistentId) {
         this.persistentId = persistentId;
+    }
+
+    public Map<String, String> getTdrNames() {
+        return tdrNames;
+    }
+
+    public void setTdrNames(Map<String, String> tdrNames) {
+        this.tdrNames = tdrNames;
+    }
+
+    public String getTdrName() {
+        return tdrName;
+    }
+
+    public void setTdrName(String tdrName) {
+        this.tdrName = tdrName;
     }
 
     private class SrcData {

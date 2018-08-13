@@ -11,6 +11,16 @@
             <h:form class="form-horizontal"  autocomplete="off">
                 <h:panelGrid columns="3" cellpadding="5">
 
+                    <p:outputLabel for="selected-tdr" value="#{bundle['dataset.archive.dialog.label.repository.name']}"/>
+                    <h:selectOneMenu id="selected-tdr"
+                                     value="#{dataverseBridgeDialog.tdrName}"
+                                     required="true" requiredMessage="Please select repository">
+                        <f:selectItem itemLabel="Select Repository" itemValue="" noSelectionOption="true" required="true"/>
+                        <f:selectItems value="#{dataverseBridgeDialog.tdrNames}" />
+                    </h:selectOneMenu>
+
+                    <p:message for="selected-tdr" styleClass="bg-danger text-danger"/>
+
                     <p:outputLabel for="tdrUsername" value="#{bundle['dataset.archive.dialog.label.tdrusername']}"/>
                     <p:inputText id="tdrUsername" value="#{dataverseBridgeDialog.tdrUsername}"
                                  requiredMessage="Please fill in your TDR username" required="true"/>
