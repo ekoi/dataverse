@@ -95,6 +95,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                 state = DataverseBridge.StateEnum.UNKNOWN_ERROR;
             }
             dbd.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
+
             if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
                 Flowable.fromCallable(() -> {
                     DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
@@ -118,7 +119,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                             public void run() {
                                 // if (archivingProgressState.isFinish()){
                                 //check state, it can be failed or archived
-                                //send mail to ingester
+                                //todo: send mail to ingester
                                 logger.info("===== Archiving finish ======");
                                 //}
                             }
@@ -127,41 +128,6 @@ public class DataverseBridgeDialog implements java.io.Serializable {
             }
         }
     }
-/*
-    public void checkArchivingProgress() {
-            //final ArchivingProgressState archivingProgressState = new ArchivingProgressState();
-            Flowable.fromCallable(() -> {
-                String state = DataverseBridge.STATE_IN_PROGRESS;
-                while (state.equals(DataverseBridge.STATE_IN_PROGRESS)) {
-                    //state = updateArchivingState();
-                    if (state == null) break;
-                    if (state.equals(DataverseBridge.STATE_IN_PROGRESS))
-                        Thread.sleep(60000);
-                }
-                return state;
-            })
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(Schedulers.single())
-                    .onErrorResumeNext(
-                            throwable -> {
-                                String es = throwable.toString();
-                                logger.severe(es);
-                            }
-                    )
-//                .doOnComplete(new Action() {
-//                    @Override
-//                    public void run()  {
-//                            if (archivingProgressState.isFinish()){
-//                                //check state, it can be failed or archived
-//                                //send mail to ingester
-//                                logger.info("Archiving finish.");
-//                            }
-//                    }
-//                })
-                    .subscribe();
-
-    }*/
-
 
     public void addMessage(FacesMessage.Severity severity, String summary, String detail) {
         FacesMessage message = new FacesMessage(severity, summary, detail);

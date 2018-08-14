@@ -1,7 +1,9 @@
 package edu.harvard.iq.dataverse;
 
-import edu.harvard.iq.dataverse.authorization.AuthenticationServiceBean;
-import edu.harvard.iq.dataverse.authorization.Permission;
+import edu.harvard.iq.dataverse.authorization.*;
+import edu.harvard.iq.dataverse.authorization.groups.Group;
+import edu.harvard.iq.dataverse.authorization.groups.GroupServiceBean;
+import edu.harvard.iq.dataverse.authorization.groups.impl.explicit.ExplicitGroup;
 import edu.harvard.iq.dataverse.authorization.providers.builtin.BuiltinUserServiceBean;
 import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
 import edu.harvard.iq.dataverse.authorization.users.PrivateUrlUser;
@@ -173,9 +175,10 @@ public class DatasetPage implements java.io.Serializable {
     PrivateUrlServiceBean privateUrlService;
     @EJB
     ExternalToolServiceBean externalToolService;
-
     @EJB
     MailServiceBean mailServiceBean;
+    @EJB
+    GroupServiceBean groupService;
 
     @Inject
     DataverseRequestServiceBean dvRequestService;
@@ -222,6 +225,8 @@ public class DatasetPage implements java.io.Serializable {
     private String authority = "";
     private String separator = "";
     private String customFields="";
+    private boolean dataverseBridgeEnabled;
+    private boolean showArchivesColumn;
 
     private boolean noDVsAtAll = false;
 
@@ -1534,13 +1539,27 @@ public class DatasetPage implements java.io.Serializable {
 
         configureTools = externalToolService.findByType(ExternalTool.Type.CONFIGURE);
         exploreTools = externalToolService.findByType(ExternalTool.Type.EXPLORE);
-        if (isSessionUserAuthenticated()) {
+
+        List<DatasetVersion> dvs = dataset.getVersions();
+        for (DatasetVersion dv:dvs) {
+            if (dv.getArchiveNote() != null) {
+                showArchivesColumn = true;
+                break;
+            }
+        }
+        if (isSessionUserAuthenticated()
+                && workingVersion.isReleased()) {
+            RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
             dataverseBridgeEnabled = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null
-                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null
-                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null;
-            if (dataverseBridgeEnabled && workingVersion.isReleased()
-                    && workingVersion.getArchiveNote() != null
-                    && (workingVersion.getArchiveNote().equals(DataverseBridge.StateEnum.IN_PROGRESS.toString()) || workingVersion.getArchiveNote().equals(DataverseBridge.StateEnum.FAILED.toString()))) {
+                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl) != null
+                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrIri) != null
+                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrs) != null
+                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUserGroup) != null
+                    && isUserHasAdminRole(rs)
+                    && isUserBelongsToSwordGroup(rs);
+
+            if (workingVersion.getArchiveNote() != null && workingVersion.getArchiveNote().equals(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
+
                 DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
                 dbd.checkArchivingProgress(persistentId, workingVersion.getFriendlyVersionNumber());
 
@@ -1550,7 +1569,32 @@ public class DatasetPage implements java.io.Serializable {
         return null;
     }
 
-    private boolean dataverseBridgeEnabled;
+    public boolean isShowArchivesColumn() {
+        return showArchivesColumn;
+    }
+
+    private boolean isUserBelongsToSwordGroup(RoleAssignmentSet rs) {
+        Set<Group> sg = groupService.groupsFor( rs.getRoleAssignee(), dataset.getOwner());
+        for (Group g:sg){
+            if (g instanceof ExplicitGroup &&
+                ((ExplicitGroup)g).getGroupAliasInOwner().equals(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUserGroup))) {
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isUserHasAdminRole( RoleAssignmentSet rs) {
+        Set<RoleAssignment> sra = rs.getAssignments();
+        for(RoleAssignment r:sra ){
+           if (r.getRole().getAlias().equals("admin")) {
+               return true;
+           }
+        }
+        return false;
+    }
+
+
     public boolean isDataverseBridgeEnabled() {
         return dataverseBridgeEnabled;
     }

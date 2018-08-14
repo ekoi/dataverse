@@ -362,7 +362,11 @@ public class SettingsServiceBean {
         DataverseBridge TDR IRI
         http://deasy.dans.knaw.nl/sword2/collection/1
          */
-        DataverseBridgeTdrIri;
+        DataverseBridgeTdrIri,
+
+        DataverseBridgeTdrs,
+
+        DataverseBridgeUserGroup;
 
 
         @Override
