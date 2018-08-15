@@ -226,7 +226,7 @@ public class DatasetPage implements java.io.Serializable {
     private String separator = "";
     private String customFields="";
     private boolean dataverseBridgeEnabled;
-    private boolean showArchivesColumn;
+    private boolean displayArchivedColumn;
 
     private boolean noDVsAtAll = false;
 
@@ -1543,12 +1543,12 @@ public class DatasetPage implements java.io.Serializable {
         List<DatasetVersion> dvs = dataset.getVersions();
         for (DatasetVersion dv:dvs) {
             if (dv.getArchiveNote() != null) {
-                showArchivesColumn = true;
+                displayArchivedColumn = true;
                 break;
             }
         }
         if (isSessionUserAuthenticated()
-                && workingVersion.isReleased()) {
+                && workingVersion.isReleased() && workingVersion.isLatestVersion()) {
             RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
             dataverseBridgeEnabled = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null
                     && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl) != null
@@ -1569,8 +1569,8 @@ public class DatasetPage implements java.io.Serializable {
         return null;
     }
 
-    public boolean isShowArchivesColumn() {
-        return showArchivesColumn;
+    public boolean isDisplayArchivedColumn() {
+        return displayArchivedColumn;
     }
 
     private boolean isUserBelongsToSwordGroup(RoleAssignmentSet rs) {
