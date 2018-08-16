@@ -5,10 +5,11 @@
                 xmlns:p="http://primefaces.org/ui"
                 xmlns:jsf="http://xmlns.jcp.org/jsf">
     <!-- Dialog DataverseBridge Form -->
-    <p:dialog id="dataverseBridgeDialog" header="Archiving '#{DatasetPage.persistentId}' Dataset" widgetVar="tdrForm" modal="true">
+    <p:dialog id="dataverseBridgeDialog" header="Archiving dataset '#{DatasetPage.persistentId}'" widgetVar="tdrForm" modal="true">
         <p:ajax event="close" update=":datasetForm" />
         <p:fragment>
             <h:form class="form-horizontal"  autocomplete="off">
+                <h:outputText value="#{bundle['dataset.archive.dialog.label']}" escape="false"/>
                 <h:panelGrid columns="3" cellpadding="5">
 
                     <p:outputLabel for="selected-tdr" value="#{bundle['dataset.archive.dialog.label.repository.name']}"/>
