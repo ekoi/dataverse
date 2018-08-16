@@ -170,9 +170,11 @@ public class DataverseBridge implements java.io.Serializable {
                 break;
             case ERROR:
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.tdr.error");
+                updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case UNKNOWN_ERROR:
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown");
+                updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             default: //do nothing
         }
