@@ -100,7 +100,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                 Flowable.fromCallable(() -> {
                     DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
                     while (currentState.equals(DataverseBridge.StateEnum.IN_PROGRESS)) {
-                        Thread.sleep(10000);
+                        Thread.sleep(120000);
                         logger.info(".... Cheking Archiving Progress .....");
                         currentState = dbd.checkArchivingProgress(persistentId, datasetVersionFriendlyNumber);
                     }
