@@ -9,8 +9,6 @@ import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
 import io.reactivex.Flowable;
 import io.reactivex.functions.Action;
 import io.reactivex.schedulers.Schedulers;
-import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpEntity;
 
 import javax.annotation.PostConstruct;
 import javax.ejb.EJB;
@@ -20,7 +18,6 @@ import javax.faces.context.FacesContext;
 import javax.faces.view.ViewScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -99,9 +96,11 @@ public class DataverseBridgeDialog implements java.io.Serializable {
             if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
                 Flowable.fromCallable(() -> {
                     DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
-                    while (currentState.equals(DataverseBridge.StateEnum.IN_PROGRESS)) {
+                    int hopCount = 0;
+                    while (currentState.equals(DataverseBridge.StateEnum.IN_PROGRESS) || hopCount == 10) {
                         Thread.sleep(120000);
-                        logger.info(".... Cheking Archiving Progress .....");
+                        hopCount += 1;
+                        logger.info(".... Cheking Archiving Progress .....[" + hopCount + "]");
                         currentState = dbd.checkArchivingProgress(persistentId, datasetVersionFriendlyNumber);
                     }
                     return currentState;
@@ -142,13 +141,6 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         return mapper.writeValueAsString(new IngestData(srcData, tdrData));
     }
 
-    private String readEntityAsString(HttpEntity entity) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        IOUtils.copy(entity.getContent(), bos);
-        return new String(bos.toByteArray(), "UTF-8");
-    }
-
-    /* THIS IS TworRavensHelper Code, we should make it public on th TwoRavensHelper class and use it here*/
     private String getApiTokenKey() {
         ApiToken apiToken;
         if (dataverseSession.getUser() == null) {

@@ -4,8 +4,6 @@ import edu.harvard.iq.dataverse.authorization.AuthenticationServiceBean;
 import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
 import edu.harvard.iq.dataverse.util.BundleUtil;
 import edu.harvard.iq.dataverse.util.MailUtil;
-import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -22,7 +20,9 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.mail.internet.InternetAddress;
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -89,15 +89,7 @@ public class DataverseBridge implements java.io.Serializable {
 
     public StateEnum ingestToTdr(String ingestData) {
         logger.info("INGEST TO TDR");
-        try {
-            StateEnum state = retrievePOSTResponseAsJsonObject(ingestData);
-            return state;
-
-        } catch (IOException e) {
-            logger.severe(e.getMessage());
-            return StateEnum.UNKNOWN_ERROR;
-
-        }
+        return retrievePOSTResponseAsJsonObject(ingestData);
     }
 
     public StateEnum checkArchivingProgress(String persistentId, String datasetVersionFriendlyNumber) {
@@ -135,8 +127,6 @@ public class DataverseBridge implements java.io.Serializable {
     }
 
     private void sendMail(String subject, String msg) {
-        String systemEmail = settingsService.getValueForKey(SettingsServiceBean.Key.SystemEmail);
-        InternetAddress systemAddress = MailUtil.parseSystemAddress(systemEmail);
         mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail(), subject, msg);
         logger.severe(msg);
     }
@@ -202,8 +192,8 @@ public class DataverseBridge implements java.io.Serializable {
                 "#" + simpleDateFormat.format(new Date());
         logger.info(archiveNoteState);
         updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, archiveNoteState);
-        logger.info("Send mail to ingester");
-        //send mail to ingester
+        //logger.info("Send mail to ingester");
+        //todo:send mail to ingester(?)
     }
 
     private JsonObject retrieveGETResponseAsJsonObject(String path) throws IOException {
@@ -224,8 +214,7 @@ public class DataverseBridge implements java.io.Serializable {
     }
 
 
-    private StateEnum retrievePOSTResponseAsJsonObject(String jsonIngestData) throws IOException {
-        String state = "";
+    private StateEnum retrievePOSTResponseAsJsonObject(String jsonIngestData){
          try (CloseableHttpClient httpClient = HttpClients.createDefault()){
             HttpPost httpPost = new HttpPost(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl, "") + "/archive/create");
             logger.finest("json that send to dataverse-bridge server (/archive/create):  " + jsonIngestData);
@@ -260,13 +249,4 @@ public class DataverseBridge implements java.io.Serializable {
         FacesMessage message = new FacesMessage(severity, summary, detail);
         FacesContext.getCurrentInstance().addMessage(null, message);
     }
-
-
-    private String readEntityAsString(HttpEntity entity) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        IOUtils.copy(entity.getContent(), bos);
-        return new String(bos.toByteArray(), "UTF-8");
-    }
-
-
 }
