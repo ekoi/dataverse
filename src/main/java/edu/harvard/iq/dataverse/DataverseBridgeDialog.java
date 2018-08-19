@@ -53,7 +53,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     private String tdrUsername;
     private String tdrPassword;
     private Map<String, DataverseBridge.DvTdrConf> dvTdrConfs = new HashMap<String, DataverseBridge.DvTdrConf>();
-    private String tdrName;
+    private String tdrName = "EASY";
     private List<String> tdrNames;
     private String persistentId;
 
@@ -78,7 +78,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
             DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
             DataverseBridge.DvTdrConf dvTdrConf = dvTdrConfs.get(tdrName);
             try {
-                state = dbd.ingestToTdr(composeJsonIngestData(dvTdrConf));
+                state = dbd.ingestToTdr(composeJsonIngestData(tdrName, dvTdrConf));
             } catch (IOException e) {
                 logger.severe(e.getMessage());
                 state = DataverseBridge.StateEnum.INTERNAL_SERVER_ERROR;
@@ -128,10 +128,10 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         FacesContext.getCurrentInstance().addMessage(null, message);
     }
 
-    private String composeJsonIngestData(DataverseBridge.DvTdrConf dvTdrConf) throws JsonProcessingException {
+    private String composeJsonIngestData(String tdrName, DataverseBridge.DvTdrConf dvTdrConf) throws JsonProcessingException {
         SrcData srcData = new SrcData(dvTdrConf.getDvBaseExportedXml() + persistentId, datasetVersionFriendlyNumber, getApiTokenKey());
 
-        TdrData tdrData = new TdrData(tdrUsername, tdrPassword, dvTdrConf.getTdrIri());
+        TdrData tdrData = new TdrData(tdrName, tdrUsername, tdrPassword, dvTdrConf.getTdrIri());
         ObjectMapper mapper = new ObjectMapper();
         return mapper.writeValueAsString(new IngestData(srcData, tdrData));
     }
@@ -232,8 +232,9 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         private String username;
         private String password;
         private String iri;
-        private String tdrName = "EASY";
-        public TdrData(String username, String password, String iri) {
+        private String tdrName;
+        public TdrData(String tdrName, String username, String password, String iri) {
+            this.tdrName = tdrName;
             this.username = username;
             this.password = password;
             this.iri = iri;
