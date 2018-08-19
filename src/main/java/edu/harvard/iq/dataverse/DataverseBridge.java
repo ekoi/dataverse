@@ -188,7 +188,7 @@ public class DataverseBridge implements java.io.Serializable {
     private void updateDatasetVersionToArchived(String persistentId, String datasetVersionFriendlyNumber, JsonObject jsonObjectArchived) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MMMM d, yyyy");
         String archiveNoteState = jsonObjectArchived.getString("landingPage", "") + "#" +
-                jsonObjectArchived.getString("doi", "") +
+                jsonObjectArchived.getString("pid", "") +
                 "#" + simpleDateFormat.format(new Date());
         logger.info(archiveNoteState);
         updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, archiveNoteState);
