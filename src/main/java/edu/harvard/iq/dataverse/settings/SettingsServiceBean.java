@@ -349,20 +349,7 @@ public class SettingsServiceBean {
          */
         PVCustomPasswordResetAlertMessage,
 
-        //Actually, it should use the systemConfig.getDataverseSiteUrl() but unfortunately it forced to use https,
-        // so we cannot use it in ddvn
-        DataverseDdiExportBaseURL,
-
-        /*
-        DataverseBridge location
-         */
         DataverseBridgeUrl,
-
-        /*
-        DataverseBridge TDR IRI
-        http://deasy.dans.knaw.nl/sword2/collection/1
-         */
-        DataverseBridgeTdrIri,
 
         DataverseBridgeTdrs,
 

@@ -37,7 +37,7 @@
                 <!-- send | cancel buttons -->
                 <div class="button-block">
                     <p:commandLink styleClass="btn btn-default" value="#{bundle['dataset.archive.dialog.button.ingest']}"
-                                   update="@form,:messagePanel" oncomplete="if (args &amp;&amp; !args.validationFailed) PF('tdrForm').hide();" actionListener="#{dataverseBridgeDialog.ingestToTdr}">
+                                   update="@form,:messagePanel" oncomplete="if (args &amp;&amp; !args.validationFailed) PF('tdrForm').hide();" actionListener="#{dataverseBridgeDialog.archive}">
                         <f:param name="DO_VALIDATION" value="true"/>
                     </p:commandLink>
                     <p:commandButton value="#{bundle.cancel}" onclick="PF('tdrForm').hide();PF('blockDatasetForm').hide();" type="button" />

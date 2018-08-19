@@ -1547,21 +1547,18 @@ public class DatasetPage implements java.io.Serializable {
                 break;
             }
         }
-        if (isSessionUserAuthenticated()
-                && workingVersion.isReleased() && workingVersion.isLatestVersion()) {
+        if (isSessionUserAuthenticated() && workingVersion.isReleased()) {
             RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
-            dataverseBridgeEnabled = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) != null
-                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl) != null
-                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrIri) != null
-                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrs) != null
+            dataverseBridgeEnabled = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrs) != null
                     && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUserGroup) != null
                     && isUserHasAdminRole(rs)
                     && isUserBelongsToSwordGroup(rs);
 
-            if (workingVersion.getArchiveNote() != null && workingVersion.getArchiveNote().equals(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
+            if (workingVersion.getArchiveNote() != null && workingVersion.getArchiveNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
 
                 DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
-                dbd.checkArchivingProgress(persistentId, workingVersion.getFriendlyVersionNumber());
+                DataverseBridge.DvTdrConf dvTdrConf = DataverseBridge.getDvTdrConfiguration(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrs)).get(workingVersion.getArchiveNote().split("@")[1]);
+                dbd.checkArchivingProgress(dvTdrConf ,persistentId, workingVersion.getFriendlyVersionNumber());
 
             }
         }

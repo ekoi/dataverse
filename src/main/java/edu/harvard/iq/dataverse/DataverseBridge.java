@@ -17,17 +17,21 @@ import javax.faces.context.FacesContext;
 import javax.faces.view.ViewScoped;
 import javax.inject.Named;
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.mail.internet.InternetAddress;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Map;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -48,16 +52,16 @@ public class DataverseBridge implements java.io.Serializable {
     private Logger logger = Logger.getLogger(DataverseBridge.class.getCanonicalName());
 
     public enum StateEnum {
-        IN_PROGRESS("IN-PROGRESS"),
+        IN_PROGRESS("IN-PROGRESS@"),
         ERROR("ERROR"),
         FAILED("FAILED"),
         ARCHIVED("ARCHIVED"),
         REJECTED("REJECTED"),
         INVALID("INVALID"),
         TDR_DOWN("TDR-DOWN"),
-        INVALID_USER_CREDENTIAL("INVALID-USER-CREDENTIAL"),
-        REQUEST_TIME_OUT("REQUEST-TIME-OUT"),
-        UNKNOWN_ERROR("UNKNOWN-ERROR"),
+        INVALID_USER_CREDENTIAL("INVALID_USER_CREDENTIAL"),
+        REQUEST_TIME_OUT("REQUEST_TIME_OUT"),
+        INTERNAL_SERVER_ERROR("INTERNAL_SERVER_ERROR"),
         BRIDGE_DOWN("BRIDGE-DOWN");
         private String value;
 
@@ -92,15 +96,15 @@ public class DataverseBridge implements java.io.Serializable {
         return retrievePOSTResponseAsJsonObject(ingestData);
     }
 
-    public StateEnum checkArchivingProgress(String persistentId, String datasetVersionFriendlyNumber) {
-        StateEnum state = StateEnum.UNKNOWN_ERROR;
+    public StateEnum checkArchivingProgress(DvTdrConf dvTdrConf, String persistentId, String datasetVersionFriendlyNumber) {
+        StateEnum state = StateEnum.INTERNAL_SERVER_ERROR;
         logger.info("Check archiving state....");
         JsonObject jsonObjectArchived = null;
         String path = null;
         try {
             path = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl, "") + "/archive/state?srcXml="
-                    + URLEncoder.encode(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseDdiExportBaseURL) + persistentId, StandardCharsets.UTF_8.toString())
-                    + "&srcVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetIri=" + URLEncoder.encode(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrIri), StandardCharsets.UTF_8.toString());
+                    + URLEncoder.encode(dvTdrConf.dvBaseExportedXml + persistentId, StandardCharsets.UTF_8.toString())
+                    + "&srcVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetIri=" + URLEncoder.encode(dvTdrConf.getTdrIri(), StandardCharsets.UTF_8.toString());
             jsonObjectArchived = retrieveGETResponseAsJsonObject(path);
             if (jsonObjectArchived != null) {
                state = StateEnum.fromValue(jsonObjectArchived.getString("state", "UNKNOWN-ERROR"));
@@ -112,7 +116,7 @@ public class DataverseBridge implements java.io.Serializable {
 
         } catch (UnsupportedEncodingException e) {
             logger.severe(e.getMessage());
-            state = StateEnum.UNKNOWN_ERROR;
+            state = StateEnum.INTERNAL_SERVER_ERROR;
         } catch (IOException e) {
             if (e.getMessage().contains("Connection refused"))
                 state = StateEnum.BRIDGE_DOWN;
@@ -152,7 +156,6 @@ public class DataverseBridge implements java.io.Serializable {
                 break;
             case IN_PROGRESS:
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress");
-                updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case INVALID:
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.invalid");
@@ -162,14 +165,13 @@ public class DataverseBridge implements java.io.Serializable {
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.tdr.error");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
-            case UNKNOWN_ERROR:
+            case INTERNAL_SERVER_ERROR:
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown");
-                updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             default: //do nothing
         }
 
-        if (state != StateEnum.IN_PROGRESS) {
+        if (!StateEnum.IN_PROGRESS.value.startsWith(state.value)) {
             sendMail(state.value, msg);
             addMessage(FacesMessage.SEVERITY_ERROR, msg,null);
         }
@@ -177,7 +179,7 @@ public class DataverseBridge implements java.io.Serializable {
 //            addMessage(FacesMessage.SEVERITY_INFO, msg,null);
     }
 
-    private void updateDataverseVersionState(String persistentId, String datasetVersionFriendlyNumber, String state) {
+    public void updateDataverseVersionState(String persistentId, String datasetVersionFriendlyNumber, String state) {
         Dataset dataset = datasetService.findByGlobalId(persistentId);
         DatasetVersion dv = datasetVersionService.findByFriendlyVersionNumber(dataset.getId(), datasetVersionFriendlyNumber);
         dv.setArchiveTime(new Date());
@@ -240,7 +242,7 @@ public class DataverseBridge implements java.io.Serializable {
                 return StateEnum.BRIDGE_DOWN;
             }
         }
-        return StateEnum.UNKNOWN_ERROR;
+        return StateEnum.INTERNAL_SERVER_ERROR;
 
     }
 
@@ -248,5 +250,33 @@ public class DataverseBridge implements java.io.Serializable {
     public void addMessage(FacesMessage.Severity severity, String summary, String detail) {
         FacesMessage message = new FacesMessage(severity, summary, detail);
         FacesContext.getCurrentInstance().addMessage(null, message);
+    }
+
+    public static Map<String, DvTdrConf> getDvTdrConfiguration(String dvTdrSettings) {
+        JsonReader reader = Json.createReader(new StringReader(dvTdrSettings));
+        JsonArray ja = reader.readArray();
+        reader.close();
+        Map<String, DataverseBridge.DvTdrConf> dvTdrConfs = ja.stream()
+                .map(JsonObject.class::cast)
+                .collect(Collectors.toMap(
+                        k -> k.getJsonString("tdrName").getString(),
+                        v -> new DataverseBridge.DvTdrConf(v.getString("dvBaseExportedXml"), v.getString("tdrIri"))));
+        return dvTdrConfs;
+    }
+    public static class DvTdrConf{
+        private String dvBaseExportedXml;
+        private String tdrIri;
+        public DvTdrConf(String dvBaseExportedXml, String tdrIri) {
+            this.dvBaseExportedXml = dvBaseExportedXml;
+            this.tdrIri = tdrIri;
+        }
+
+        public String getDvBaseExportedXml() {
+            return dvBaseExportedXml;
+        }
+
+        public String getTdrIri() {
+            return tdrIri;
+        }
     }
 }

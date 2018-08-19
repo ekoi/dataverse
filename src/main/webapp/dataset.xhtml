@@ -243,9 +243,8 @@
                             <!-- DANS Archive button-->
                             <div class="btn-group pull-right" id="datasetButtonBar" role="group">
                                 <p:commandLink type="button" styleClass="btn btn-default #{DatasetPage.locked ? 'disabled' : ''}" oncomplete="PF('tdrForm').show()"
-                                               rendered="#{showDataverseBridge and DatasetPage.workingVersion.archiveNote == null
-                                           and DatasetPage.dataset.owner.released
-                                                           and permissionsWrapper.canIssuePublishDatasetCommand(DatasetPage.dataset)}">
+                                               rendered="#{showDataverseBridge and DatasetPage.workingVersion.archiveNote == null and DatasetPage.workingVersion.isLatestVersion()
+                                               					and DatasetPage.dataset.owner.released and permissionsWrapper.canIssuePublishDatasetCommand(DatasetPage.dataset)}">
                                     <f:setPropertyActionListener target="#{dataverseBridgeDialog.datasetVersionFriendlyNumber}" value="#{DatasetPage.workingVersion.versionNumber}.#{DatasetPage.workingVersion.minorVersionNumber}"/>
                                     <f:setPropertyActionListener target="#{dataverseBridgeDialog.persistentId}" value="#{DatasetPage.persistentId}"/>
 
@@ -253,7 +252,7 @@
                                 </p:commandLink>
                                 <p:commandLink id="ajax" type="button" styleClass="btn btn-default bootstrap-button-tooltip #{DatasetPage.locked ? 'disabled' : ''}"
                                                title="Please reload the page to check on the archiving progress" update=":datasetForm" actionListener="#{DatasetPage.init}"
-                                               rendered="#{showDataverseBridge and DatasetPage.workingVersion.archiveNote =='IN-PROGRESS'}" >
+                                               rendered="#{showDataverseBridge and DatasetPage.workingVersion.archiveNote.startsWith('IN-PROGRESS@')}" >
                                     <span class="glyphicon glyphicon-transfer"/>#{bundle['dataset.archive.button.inprogress']}
                                 </p:commandLink>
                             </div>
