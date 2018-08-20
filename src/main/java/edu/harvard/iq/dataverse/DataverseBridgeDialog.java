@@ -89,7 +89,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                     DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
                     int hopCount = 0;
                     while (currentState == DataverseBridge.StateEnum.IN_PROGRESS || hopCount == 10) {
-                        Thread.sleep(120000);
+                        Thread.sleep(600000);//10 minutes
                         hopCount += 1;
                         logger.info(".... Cheking Archiving Progress .....[" + hopCount + "]");
                         currentState = dbd.checkArchivingProgress(dvTdrConf, persistentId, datasetVersionFriendlyNumber);

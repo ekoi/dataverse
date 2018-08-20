@@ -59,10 +59,10 @@ public class DataverseBridge implements java.io.Serializable {
         REJECTED("REJECTED"),
         INVALID("INVALID"),
         TDR_DOWN("TDR-DOWN"),
+        BRIDGE_DOWN("BRIDGE-DOWN"),
         INVALID_USER_CREDENTIAL("INVALID_USER_CREDENTIAL"),
         REQUEST_TIME_OUT("REQUEST_TIME_OUT"),
-        INTERNAL_SERVER_ERROR("INTERNAL_SERVER_ERROR"),
-        BRIDGE_DOWN("BRIDGE-DOWN");
+        INTERNAL_SERVER_ERROR("INTERNAL_SERVER_ERROR");
         private String value;
 
         StateEnum(String value) {
@@ -150,6 +150,9 @@ public class DataverseBridge implements java.io.Serializable {
             case INVALID_USER_CREDENTIAL:
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdrcredentias");
                 break;
+            case FAILED:
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.failed");
+                updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
             case REJECTED:
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.rejected");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
