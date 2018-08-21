@@ -1547,20 +1547,21 @@ public class DatasetPage implements java.io.Serializable {
                 break;
             }
         }
-        if (isSessionUserAuthenticated() && workingVersion.isReleased()) {
+        if (isSessionUserAuthenticated() && workingVersion.isReleased()
+                && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
             RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
-            dataverseBridgeEnabled = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrs) != null
-                    && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUserGroup) != null
-                    && isUserHasAdminRole(rs)
-                    && isUserBelongsToSwordGroup(rs);
+            if (!isUserHasAdminRole(rs))
+                return null;
 
-            if (workingVersion.getArchiveNote() != null && workingVersion.getArchiveNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
-
-                DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
-                DataverseBridge.DvTdrConf dvTdrConf = DataverseBridge.getDvTdrConfiguration(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrs)).get(workingVersion.getArchiveNote().split("@")[1]);
-                dbd.checkArchivingProgress(dvTdrConf ,persistentId, workingVersion.getFriendlyVersionNumber());
-
+            DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
+            DataverseBridge.DvBridgeConf dvBridgeConf = dbd.getDvBridgeConf();
+            dataverseBridgeEnabled = isUserBelongsToSwordGroup(rs, dvBridgeConf.getUserGroup());
+            if (dataverseBridgeEnabled && workingVersion.getArchiveNote() != null && workingVersion.getArchiveNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
+                String tdrName = workingVersion.getArchiveNote().split("@")[1];
+                String dvBaseMetadataXml = dvBridgeConf.getConf().get(tdrName);
+                dbd.checkArchivingProgress(dvBaseMetadataXml ,persistentId, workingVersion.getFriendlyVersionNumber(), tdrName);
             }
+
         }
 
         return null;
@@ -1570,11 +1571,11 @@ public class DatasetPage implements java.io.Serializable {
         return displayArchivedColumn;
     }
 
-    private boolean isUserBelongsToSwordGroup(RoleAssignmentSet rs) {
+    private boolean isUserBelongsToSwordGroup(RoleAssignmentSet rs, String userGroup) {
         Set<Group> sg = groupService.groupsFor( rs.getRoleAssignee(), dataset.getOwner());
         for (Group g:sg){
             if (g instanceof ExplicitGroup &&
-                ((ExplicitGroup)g).getGroupAliasInOwner().equals(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUserGroup))) {
+                ((ExplicitGroup)g).getGroupAliasInOwner().equals(userGroup)) {
                     return true;
             }
         }

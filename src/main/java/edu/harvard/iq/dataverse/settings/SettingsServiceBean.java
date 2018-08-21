@@ -349,11 +349,7 @@ public class SettingsServiceBean {
          */
         PVCustomPasswordResetAlertMessage,
 
-        DataverseBridgeUrl,
-
-        DataverseBridgeTdrs,
-
-        DataverseBridgeUserGroup;
+        DataverseBridgeConf;
 
 
         @Override

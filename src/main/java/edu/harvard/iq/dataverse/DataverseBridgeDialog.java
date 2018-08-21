@@ -52,15 +52,17 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     private String datasetVersionFriendlyNumber;
     private String tdrUsername;
     private String tdrPassword;
-    private Map<String, DataverseBridge.DvTdrConf> dvTdrConfs = new HashMap<String, DataverseBridge.DvTdrConf>();
+    private Map<String, String> dvTdrConfs = new HashMap<String, String>();
     private String tdrName = "EASY";
     private List<String> tdrNames;
     private String persistentId;
+    private DataverseBridge dataverseBridge;
 
     @PostConstruct
     public void init() {
-        if (dataverseSession.getUser().isAuthenticated()) {
-            dvTdrConfs = DataverseBridge.getDvTdrConfiguration(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeTdrs));
+        if (dataverseSession.getUser().isAuthenticated() && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
+            dataverseBridge =  new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
+            dvTdrConfs = dataverseBridge.getDvBridgeConf().getConf();
             tdrNames = dvTdrConfs.keySet().stream().collect(Collectors.toList());
         }
     }
@@ -75,16 +77,15 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
         if (tdrName.equals("EASY") || tdrName.equals("DATAVERSE")) {
             DataverseBridge.StateEnum state;
-            DataverseBridge dbd = new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
-            DataverseBridge.DvTdrConf dvTdrConf = dvTdrConfs.get(tdrName);
+            String dvBaseMetadataXml = dvTdrConfs.get(tdrName);
             try {
-                state = dbd.ingestToTdr(composeJsonIngestData(tdrName, dvTdrConf));
+                state = dataverseBridge.ingestToTdr(composeJsonIngestData(dvBaseMetadataXml,tdrName));
             } catch (IOException e) {
                 logger.severe(e.getMessage());
                 state = DataverseBridge.StateEnum.INTERNAL_SERVER_ERROR;
             }
             if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
-                dbd.updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.toString() + tdrName);
+                dataverseBridge.updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.toString() + tdrName);
                 Flowable.fromCallable(() -> {
                     DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
                     int hopCount = 0;
@@ -92,7 +93,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                         Thread.sleep(600000);//10 minutes
                         hopCount += 1;
                         logger.info(".... Cheking Archiving Progress .....[" + hopCount + "]");
-                        currentState = dbd.checkArchivingProgress(dvTdrConf, persistentId, datasetVersionFriendlyNumber);
+                        currentState = dataverseBridge.checkArchivingProgress(dvBaseMetadataXml, persistentId, datasetVersionFriendlyNumber, tdrName);
                     }
                     return currentState;
                 })
@@ -117,7 +118,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                         .subscribe();
                 addMessage(FacesMessage.SEVERITY_INFO, BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress"), null);
             } else {
-                dbd.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
+                dataverseBridge.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
             }
         } else
             addMessage(FacesMessage.SEVERITY_INFO, "'" + tdrName + " repository is currently unavailable." , "Please use 'EASY repository'");
@@ -128,10 +129,10 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         FacesContext.getCurrentInstance().addMessage(null, message);
     }
 
-    private String composeJsonIngestData(String tdrName, DataverseBridge.DvTdrConf dvTdrConf) throws JsonProcessingException {
-        SrcData srcData = new SrcData(dvTdrConf.getDvBaseExportedXml() + persistentId, datasetVersionFriendlyNumber, getApiTokenKey());
+    private String composeJsonIngestData(String dvBaseMetadataXml, String tdrName) throws JsonProcessingException {
+        SrcData srcData = new SrcData(dvBaseMetadataXml + persistentId, datasetVersionFriendlyNumber, getApiTokenKey());
 
-        TdrData tdrData = new TdrData(tdrName, tdrUsername, tdrPassword, dvTdrConf.getTdrIri());
+        TdrData tdrData = new TdrData(tdrName, tdrUsername, tdrPassword);
         ObjectMapper mapper = new ObjectMapper();
         return mapper.writeValueAsString(new IngestData(srcData, tdrData));
     }
@@ -189,7 +190,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     }
 
 
-    public void setTdrNames(Map<String, DataverseBridge.DvTdrConf> dvTdrConfs) {
+    public void setTdrNames(Map<String, String> dvTdrConfs) {
         this.dvTdrConfs = dvTdrConfs;
     }
 
@@ -204,6 +205,8 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     public List<String> getTdrNames() {
         return tdrNames;
     }
+
+
 
     private class SrcData {
         private String srcXml;
@@ -231,13 +234,11 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     private class TdrData {
         private String username;
         private String password;
-        private String iri;
         private String tdrName;
-        public TdrData(String tdrName, String username, String password, String iri) {
+        public TdrData(String tdrName, String username, String password) {
             this.tdrName = tdrName;
             this.username = username;
             this.password = password;
-            this.iri = iri;
         }
 
         public String getUsername() {
@@ -246,10 +247,6 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
         public String getPassword() {
             return password;
-        }
-
-        public String getIri() {
-            return iri;
         }
 
         public String getTdrName() {

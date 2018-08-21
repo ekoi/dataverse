@@ -41,12 +41,14 @@ import java.util.stream.Collectors;
 @Named
 public class DataverseBridge implements java.io.Serializable {
 
-    DatasetServiceBean datasetService;
-    DatasetVersionServiceBean datasetVersionService;
-    SettingsServiceBean settingsService;
-    DataverseServiceBean dataverseService;
-    AuthenticationServiceBean authService;
-    MailServiceBean mailServiceBean;
+    private DatasetServiceBean datasetService;
+    private DatasetVersionServiceBean datasetVersionService;
+    private SettingsServiceBean settingsService;
+    private DataverseServiceBean dataverseService;
+    private AuthenticationServiceBean authService;
+    private MailServiceBean mailServiceBean;
+
+    private DvBridgeConf dvBridgeConf;
 
 
     private Logger logger = Logger.getLogger(DataverseBridge.class.getCanonicalName());
@@ -89,6 +91,7 @@ public class DataverseBridge implements java.io.Serializable {
         this.datasetVersionService = datasetVersionService;
         this.authService = authService;
         this.mailServiceBean = mailServiceBean;
+        this.dvBridgeConf = getDvBridgeConf(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf));
     }
 
     public StateEnum ingestToTdr(String ingestData) {
@@ -96,15 +99,15 @@ public class DataverseBridge implements java.io.Serializable {
         return retrievePOSTResponseAsJsonObject(ingestData);
     }
 
-    public StateEnum checkArchivingProgress(DvTdrConf dvTdrConf, String persistentId, String datasetVersionFriendlyNumber) {
+    public StateEnum checkArchivingProgress(String dvBaseMetadataXml, String persistentId, String datasetVersionFriendlyNumber, String tdrName) {
         StateEnum state = StateEnum.INTERNAL_SERVER_ERROR;
         logger.info("Check archiving state....");
         JsonObject jsonObjectArchived = null;
         String path = null;
         try {
-            path = settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl, "") + "/archive/state?srcXml="
-                    + URLEncoder.encode(dvTdrConf.dvBaseExportedXml + persistentId, StandardCharsets.UTF_8.toString())
-                    + "&srcVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetIri=" + URLEncoder.encode(dvTdrConf.getTdrIri(), StandardCharsets.UTF_8.toString());
+            path = dvBridgeConf.dataverseBridgeUrl + "/archive/state?srcMetadataXml="
+                    + URLEncoder.encode(dvBaseMetadataXml + persistentId, StandardCharsets.UTF_8.toString())
+                    + "&srcMetadataVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetTdrName=" + tdrName;
             jsonObjectArchived = retrieveGETResponseAsJsonObject(path);
             if (jsonObjectArchived != null) {
                state = StateEnum.fromValue(jsonObjectArchived.getString("state", "UNKNOWN-ERROR"));
@@ -221,7 +224,7 @@ public class DataverseBridge implements java.io.Serializable {
 
     private StateEnum retrievePOSTResponseAsJsonObject(String jsonIngestData){
          try (CloseableHttpClient httpClient = HttpClients.createDefault()){
-            HttpPost httpPost = new HttpPost(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeUrl, "") + "/archive/create");
+            HttpPost httpPost = new HttpPost(dvBridgeConf.dataverseBridgeUrl + "/archive/create");
             logger.finest("json that send to dataverse-bridge server (/archive/create):  " + jsonIngestData);
             StringEntity entity = new StringEntity(jsonIngestData);
             httpPost.setEntity(entity);
@@ -255,31 +258,45 @@ public class DataverseBridge implements java.io.Serializable {
         FacesContext.getCurrentInstance().addMessage(null, message);
     }
 
-    public static Map<String, DvTdrConf> getDvTdrConfiguration(String dvTdrSettings) {
-        JsonReader reader = Json.createReader(new StringReader(dvTdrSettings));
-        JsonArray ja = reader.readArray();
-        reader.close();
-        Map<String, DataverseBridge.DvTdrConf> dvTdrConfs = ja.stream()
-                .map(JsonObject.class::cast)
+    private static DvBridgeConf getDvBridgeConf(String dvBridgeSetting) {
+        JsonReader jsonReader = Json.createReader(new StringReader(dvBridgeSetting));
+        JsonObject dvBridgeSettingJsonObject = jsonReader.readObject();
+        jsonReader.close();
+        DvBridgeConf dvBridgeConf = new DvBridgeConf(dvBridgeSettingJsonObject.getString("dataverse-bridge-url")
+                , dvBridgeSettingJsonObject.getString("user-group")
+                , dvBridgeSettingJsonObject.getJsonArray("conf").stream().map(JsonObject.class::cast)
                 .collect(Collectors.toMap(
                         k -> k.getJsonString("tdrName").getString(),
-                        v -> new DataverseBridge.DvTdrConf(v.getString("dvBaseExportedXml"), v.getString("tdrIri"))));
-        return dvTdrConfs;
+                        v -> v.getString("dvBaseMetadataXml"))));
+        return dvBridgeConf;
     }
-    public static class DvTdrConf{
-        private String dvBaseExportedXml;
-        private String tdrIri;
-        public DvTdrConf(String dvBaseExportedXml, String tdrIri) {
-            this.dvBaseExportedXml = dvBaseExportedXml;
-            this.tdrIri = tdrIri;
+
+    public DvBridgeConf getDvBridgeConf() {
+        return dvBridgeConf;
+    }
+
+    static class DvBridgeConf {
+        private String dataverseBridgeUrl;
+        private String userGroup;
+        private Map<String, String> conf;
+
+        public DvBridgeConf(String dataverseBridgeUrl, String userGroup, Map<String, String> conf) {
+            this.dataverseBridgeUrl = dataverseBridgeUrl;
+            this.userGroup = userGroup;
+            this.conf = conf;
         }
 
-        public String getDvBaseExportedXml() {
-            return dvBaseExportedXml;
+        public String getDataverseBridgeUrl() {
+            return dataverseBridgeUrl;
         }
 
-        public String getTdrIri() {
-            return tdrIri;
+        public String getUserGroup() {
+            return userGroup;
+        }
+
+        public Map<String, String> getConf() {
+            return conf;
         }
     }
+
 }
