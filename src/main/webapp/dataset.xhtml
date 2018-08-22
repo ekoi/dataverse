@@ -251,7 +251,7 @@
                                     <span class="glyphicon glyphicon-save-file"/>#{bundle['dataset.archive.button']}
                                 </p:commandLink>
                                 <p:commandLink id="ajax" type="button" styleClass="btn btn-default bootstrap-button-tooltip #{DatasetPage.locked ? 'disabled' : ''}"
-                                               title="Please reload the page to check on the archiving progress" update=":datasetForm" actionListener="#{DatasetPage.init}"
+                                               title="Please reload the page to check on the archiving progress" update=":datasetForm" actionListener="#{DatasetPage.reload()}"
                                                rendered="#{showDataverseBridge and DatasetPage.workingVersion.archiveNote.startsWith('IN-PROGRESS@')}" >
                                     <span class="glyphicon glyphicon-transfer"/>#{bundle['dataset.archive.button.inprogress']}
                                 </p:commandLink>

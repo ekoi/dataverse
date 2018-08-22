@@ -8,7 +8,6 @@ import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
 import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
 import edu.harvard.iq.dataverse.util.BundleUtil;
 import io.reactivex.Flowable;
-import io.reactivex.functions.Action;
 import io.reactivex.schedulers.Schedulers;
 
 import javax.annotation.PostConstruct;
@@ -41,7 +40,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     @EJB
     DataverseServiceBean dataverseService;
     @Inject
-    DataverseSession dataverseSession;
+    DataverseSession session;
     @EJB
     AuthenticationServiceBean authService;
     @EJB
@@ -60,8 +59,8 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
     @PostConstruct
     public void init() {
-        if (dataverseSession.getUser().isAuthenticated() && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
-            dataverseBridge =  new DataverseBridge(settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
+        if (session.getUser().isAuthenticated() && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
+            dataverseBridge =  new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
             dvTdrConfs = dataverseBridge.getDvBridgeConf().getConf();
             tdrNames = dvTdrConfs.keySet().stream().collect(Collectors.toList());
         }
@@ -105,33 +104,21 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                                     logger.severe(es);
                                 }
                         )
-                        .doOnComplete(new Action() {
-                            @Override
-                            public void run() {
-                                // if (archivingProgressState.isFinish()){
-                                //check state, it can be failed or archived
-                                //todo: send mail to ingester
-                                logger.info("===== Archiving finish ======");
-                                //}
-                            }
-                        })
-                        .subscribe();
-                addMessage(FacesMessage.SEVERITY_INFO, BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress"), null);
+                        .subscribe(cs -> logger.info("The dataset has been archived."),
+                                throwable -> logger.severe(throwable.getCause().getMessage()));
+
+                FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_INFO
+                                                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress")
+                                                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.details"));
+                FacesContext.getCurrentInstance().addMessage(null, message);
             } else {
                 dataverseBridge.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
             }
-        } else
-            addMessage(FacesMessage.SEVERITY_INFO, "'" + tdrName + " repository is currently unavailable." , "Please use 'EASY repository'");
-    }
-
-    public void addMessage(FacesMessage.Severity severity, String summary, String detail) {
-        FacesMessage message = new FacesMessage(severity, summary, detail);
-        FacesContext.getCurrentInstance().addMessage(null, message);
+        }
     }
 
     private String composeJsonIngestData(String dvBaseMetadataXml, String tdrName) throws JsonProcessingException {
         SrcData srcData = new SrcData(dvBaseMetadataXml + persistentId, datasetVersionFriendlyNumber, getApiTokenKey());
-
         TdrData tdrData = new TdrData(tdrName, tdrUsername, tdrPassword);
         ObjectMapper mapper = new ObjectMapper();
         return mapper.writeValueAsString(new IngestData(srcData, tdrData));
@@ -139,11 +126,11 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
     private String getApiTokenKey() {
         ApiToken apiToken;
-        if (dataverseSession.getUser() == null) {
+        if (session.getUser() == null) {
             return null;
         }
-        if (dataverseSession.getUser().isAuthenticated()) {
-            AuthenticatedUser au = (AuthenticatedUser) dataverseSession.getUser();
+        if (session.getUser().isAuthenticated()) {
+            AuthenticatedUser au = (AuthenticatedUser) session.getUser();
             apiToken = authService.findApiTokenByUser(au);
             if (apiToken != null) {
                 return apiToken.getTokenString();

@@ -17,7 +17,6 @@ import javax.faces.context.FacesContext;
 import javax.faces.view.ViewScoped;
 import javax.inject.Named;
 import javax.json.Json;
-import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.mail.internet.InternetAddress;
@@ -28,6 +27,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -44,11 +44,10 @@ public class DataverseBridge implements java.io.Serializable {
     private DatasetServiceBean datasetService;
     private DatasetVersionServiceBean datasetVersionService;
     private SettingsServiceBean settingsService;
-    private DataverseServiceBean dataverseService;
     private AuthenticationServiceBean authService;
     private MailServiceBean mailServiceBean;
-
     private DvBridgeConf dvBridgeConf;
+    String userMail;
 
 
     private Logger logger = Logger.getLogger(DataverseBridge.class.getCanonicalName());
@@ -85,7 +84,8 @@ public class DataverseBridge implements java.io.Serializable {
         }
     }
 
-    public DataverseBridge(SettingsServiceBean settingsService, DatasetServiceBean datasetService, DatasetVersionServiceBean datasetVersionService, AuthenticationServiceBean authService, MailServiceBean mailServiceBean){
+    public DataverseBridge(String userMail, SettingsServiceBean settingsService, DatasetServiceBean datasetService, DatasetVersionServiceBean datasetVersionService, AuthenticationServiceBean authService, MailServiceBean mailServiceBean){
+        this.userMail = userMail;
         this.settingsService = settingsService;
         this.datasetService = datasetService;
         this.datasetVersionService = datasetVersionService;
@@ -140,6 +140,8 @@ public class DataverseBridge implements java.io.Serializable {
 
     public void updateArchivenoteAndDisplayMessage(String persistentId, String datasetVersionFriendlyNumber, StateEnum state) {
         String msg = "";
+        String msgDetails = "";
+        FacesMessage.Severity fs = FacesMessage.SEVERITY_ERROR;
         switch (state) {
             case BRIDGE_DOWN:
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down");
@@ -161,7 +163,9 @@ public class DataverseBridge implements java.io.Serializable {
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case IN_PROGRESS:
+                fs = FacesMessage.SEVERITY_INFO;
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.details");
                 break;
             case INVALID:
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.invalid");
@@ -174,15 +178,8 @@ public class DataverseBridge implements java.io.Serializable {
             case INTERNAL_SERVER_ERROR:
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown");
                 break;
-            default: //do nothing
         }
-
-        if (!StateEnum.IN_PROGRESS.value.startsWith(state.value)) {
-            sendMail(state.value, msg);
-            addMessage(FacesMessage.SEVERITY_ERROR, msg,null);
-        }
-//        else
-//            addMessage(FacesMessage.SEVERITY_INFO, msg,null);
+        addMessage(fs, msg,msgDetails);
     }
 
     public void updateDataverseVersionState(String persistentId, String datasetVersionFriendlyNumber, String state) {
@@ -195,12 +192,15 @@ public class DataverseBridge implements java.io.Serializable {
 
     private void updateDatasetVersionToArchived(String persistentId, String datasetVersionFriendlyNumber, JsonObject jsonObjectArchived) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MMMM d, yyyy");
+        String pid = jsonObjectArchived.getString("pid", "");
         String archiveNoteState = jsonObjectArchived.getString("landingPage", "") + "#" +
-                jsonObjectArchived.getString("pid", "") +
+                pid +
                 "#" + simpleDateFormat.format(new Date());
         logger.info(archiveNoteState);
         updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, archiveNoteState);
-        //logger.info("Send mail to ingester");
+        String msg = BundleUtil.getStringFromBundle("dataset.archive.notification.email.archiving.finish.text", Arrays.asList(pid));
+        mailServiceBean.sendSystemEmail(userMail, BundleUtil.getStringFromBundle("dataset.archive.notification.email.archiving.finish.subject"), msg);
+        logger.info("Mail is send to: " + userMail);
         //todo:send mail to ingester(?)
     }
 
@@ -258,7 +258,7 @@ public class DataverseBridge implements java.io.Serializable {
         FacesContext.getCurrentInstance().addMessage(null, message);
     }
 
-    private static DvBridgeConf getDvBridgeConf(String dvBridgeSetting) {
+    private DvBridgeConf getDvBridgeConf(String dvBridgeSetting) {
         JsonReader jsonReader = Json.createReader(new StringReader(dvBridgeSetting));
         JsonObject dvBridgeSettingJsonObject = jsonReader.readObject();
         jsonReader.close();
@@ -298,5 +298,4 @@ public class DataverseBridge implements java.io.Serializable {
             return conf;
         }
     }
-
 }
