@@ -53,7 +53,7 @@ public class DataverseBridge implements java.io.Serializable {
     private Logger logger = Logger.getLogger(DataverseBridge.class.getCanonicalName());
 
     public enum StateEnum {
-        IN_PROGRESS("IN-PROGRESS@"),
+        IN_PROGRESS("IN-PROGRESS"),
         ERROR("ERROR"),
         FAILED("FAILED"),
         ARCHIVED("ARCHIVED"),
@@ -133,53 +133,55 @@ public class DataverseBridge implements java.io.Serializable {
         return state;
     }
 
-    private void sendMail(String subject, String msg) {
-        mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail(), subject, msg);
-        logger.severe(msg);
-    }
-
     public void updateArchivenoteAndDisplayMessage(String persistentId, String datasetVersionFriendlyNumber, StateEnum state) {
-        String msg = "";
+        String msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.transfer");
         String msgDetails = "";
+        boolean sendMailToAdmin = true;
         FacesMessage.Severity fs = FacesMessage.SEVERITY_ERROR;
         switch (state) {
             case BRIDGE_DOWN:
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down");
                 break;
             case TDR_DOWN:
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.down");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.down");
                 break;
             case REQUEST_TIME_OUT:
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.down");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.down");
                 break;
             case INVALID_USER_CREDENTIAL:
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdrcredentias");
+                sendMailToAdmin = false;
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdrcredentials");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdrcredentials.detail");
                 break;
             case FAILED:
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.failed");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.failed");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
             case REJECTED:
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.rejected");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.rejected");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case IN_PROGRESS:
+                sendMailToAdmin = false;
                 fs = FacesMessage.SEVERITY_INFO;
                 msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress");
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.details");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.detail");
                 break;
             case INVALID:
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.invalid");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.invalid");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case ERROR:
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.tdr.error");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.tdr.error");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case INTERNAL_SERVER_ERROR:
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown");
                 break;
         }
-        addMessage(fs, msg,msgDetails);
+        addMessage(fs, msg, msgDetails);
+        if (sendMailToAdmin)
+            mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail()
+                    , state.value, "persistentId: " + persistentId + "\nVersion: " + datasetVersionFriendlyNumber );
     }
 
     public void updateDataverseVersionState(String persistentId, String datasetVersionFriendlyNumber, String state) {
@@ -255,7 +257,8 @@ public class DataverseBridge implements java.io.Serializable {
 
     public void addMessage(FacesMessage.Severity severity, String summary, String detail) {
         FacesMessage message = new FacesMessage(severity, summary, detail);
-        FacesContext.getCurrentInstance().addMessage(null, message);
+        if (FacesContext.getCurrentInstance() != null) //we need this check since there is no contex any more when this method is executed by a thread that run in background; eq. Flowable.fromCallable... (DataverseBridgeDialog)
+            FacesContext.getCurrentInstance().addMessage(null, message);
     }
 
     private DvBridgeConf getDvBridgeConf(String dvBridgeSetting) {

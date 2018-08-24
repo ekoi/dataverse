@@ -84,16 +84,17 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                 state = DataverseBridge.StateEnum.INTERNAL_SERVER_ERROR;
             }
             if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
-                dataverseBridge.updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.toString() + tdrName);
+                dataverseBridge.updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.toString() + "@" + tdrName);
                 Flowable.fromCallable(() -> {
                     DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
                     int hopCount = 0;
-                    while (currentState == DataverseBridge.StateEnum.IN_PROGRESS || hopCount == 10) {
+                        while (currentState == DataverseBridge.StateEnum.IN_PROGRESS || hopCount == 10) {
                         Thread.sleep(600000);//10 minutes
                         hopCount += 1;
                         logger.info(".... Cheking Archiving Progress .....[" + hopCount + "]");
                         currentState = dataverseBridge.checkArchivingProgress(dvBaseMetadataXml, persistentId, datasetVersionFriendlyNumber, tdrName);
                     }
+                    logger.info("Hop count: " + hopCount + "\t Current state: " + currentState);
                     return currentState;
                 })
                         .subscribeOn(Schedulers.io())
@@ -109,7 +110,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
                 FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_INFO
                                                     , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress")
-                                                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.details"));
+                                                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.detail"));
                 FacesContext.getCurrentInstance().addMessage(null, message);
             } else {
                 dataverseBridge.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
