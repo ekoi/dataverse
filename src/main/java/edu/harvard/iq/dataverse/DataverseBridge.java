@@ -47,10 +47,11 @@ public class DataverseBridge implements java.io.Serializable {
     private AuthenticationServiceBean authService;
     private MailServiceBean mailServiceBean;
     private DvBridgeConf dvBridgeConf;
-    String userMail;
+    private String userMail;
 
 
     private Logger logger = Logger.getLogger(DataverseBridge.class.getCanonicalName());
+    private static String RESPONSE_STATE = "{ \"state\":\"value\" }";
 
     public enum StateEnum {
         IN_PROGRESS("IN-PROGRESS"),
@@ -94,9 +95,44 @@ public class DataverseBridge implements java.io.Serializable {
         this.dvBridgeConf = getDvBridgeConf(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf));
     }
 
-    public StateEnum ingestToTdr(String ingestData) {
-        logger.info("INGEST TO TDR");
-        return retrievePOSTResponseAsJsonObject(ingestData);
+    public JsonObject ingestToTdr(String ingestData) {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpPost httpPost = new HttpPost(dvBridgeConf.dataverseBridgeUrl + "/archive/create");
+            logger.finest("json that send to dataverse-bridge server (/archive/create):  " + ingestData);
+            StringEntity entity = new StringEntity(ingestData);
+            httpPost.setEntity(entity);
+            httpPost.setHeader("Accept", "application/json");
+            httpPost.setHeader("Content-type", "application/json");
+            CloseableHttpResponse response = httpClient.execute(httpPost);
+            switch (response.getStatusLine().getStatusCode()) {
+                case HttpStatus.SC_CREATED:
+                case HttpStatus.SC_OK:
+                    JsonReader readerInprogres = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.IN_PROGRESS.value)));
+                    JsonObject jsonObject = readerInprogres.readObject();
+                    readerInprogres.close();
+                    return jsonObject;
+                case HttpStatus.SC_FORBIDDEN:
+                    JsonReader jsonReader = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.INVALID_USER_CREDENTIAL.value)));
+                    JsonObject jo = jsonReader.readObject();
+                    jsonReader.close();
+                    return jo;
+                case HttpStatus.SC_REQUEST_TIMEOUT:
+                    JsonReader readerTdrDown = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.TDR_DOWN.value)));
+                    JsonObject tdrDownJsonObject = readerTdrDown.readObject();
+                    readerTdrDown.close();;
+                    return tdrDownJsonObject;
+            }
+        } catch (IOException e) {
+            if (e.getMessage().contains("Connection refused")) {
+                JsonObject responseJsonObject = reportBridgeDown(e);
+                return responseJsonObject;
+            }
+        }
+
+        JsonReader reader = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.INTERNAL_SERVER_ERROR.value)));
+        JsonObject responseJsonObject = reader.readObject();
+        reader.close();;
+        return responseJsonObject;
     }
 
     public StateEnum checkArchivingProgress(String dvBaseMetadataXml, String persistentId, String datasetVersionFriendlyNumber, String tdrName) {
@@ -109,22 +145,14 @@ public class DataverseBridge implements java.io.Serializable {
                     + URLEncoder.encode(dvBaseMetadataXml + persistentId, StandardCharsets.UTF_8.toString())
                     + "&srcMetadataVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetTdrName=" + tdrName;
             jsonObjectArchived = retrieveGETResponseAsJsonObject(path);
-            if (jsonObjectArchived != null) {
-               state = StateEnum.fromValue(jsonObjectArchived.getString("state", "UNKNOWN-ERROR"));
-               if (state == StateEnum.ARCHIVED) {
+            state = StateEnum.fromValue(jsonObjectArchived.getString("state", "UNKNOWN-ERROR"));
+            if (state == StateEnum.ARCHIVED) {
                     logger.info("Update archiving state in the datasetVersion table.");
                     updateDatasetVersionToArchived(persistentId, datasetVersionFriendlyNumber, jsonObjectArchived);
-                }
             }
-
         } catch (UnsupportedEncodingException e) {
             logger.severe(e.getMessage());
-            state = StateEnum.INTERNAL_SERVER_ERROR;
-        } catch (IOException e) {
-            if (e.getMessage().contains("Connection refused"))
-                state = StateEnum.BRIDGE_DOWN;
         }
-
 
         if (state != StateEnum.ARCHIVED) {
             logger.info("ARCHIVING state: " + state);
@@ -156,6 +184,7 @@ public class DataverseBridge implements java.io.Serializable {
             case FAILED:
                 msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.failed");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
+                break;
             case REJECTED:
                 msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.rejected");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
@@ -206,54 +235,45 @@ public class DataverseBridge implements java.io.Serializable {
         //todo:send mail to ingester(?)
     }
 
-    private JsonObject retrieveGETResponseAsJsonObject(String path) throws IOException {
-        JsonObject jsonObject = null;
-        JsonReader reader = null;
+    private JsonObject retrieveGETResponseAsJsonObject(String path) {
         //see https://stackoverflow.com/questions/21574478/what-is-the-difference-between-closeablehttpclient-and-httpclient-in-apache-http
         try(CloseableHttpClient httpclient = HttpClients.createDefault()){
             HttpGet httpGet = new HttpGet(path);
             httpGet.addHeader("accept", "application/json");
             CloseableHttpResponse response = httpclient.execute(httpGet);
-            if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
-                reader = Json.createReader(new InputStreamReader((response.getEntity().getContent())));
-                jsonObject = reader.readObject();
-                reader.close();
-            }
-        }
-        return jsonObject;
-    }
-
-
-    private StateEnum retrievePOSTResponseAsJsonObject(String jsonIngestData){
-         try (CloseableHttpClient httpClient = HttpClients.createDefault()){
-            HttpPost httpPost = new HttpPost(dvBridgeConf.dataverseBridgeUrl + "/archive/create");
-            logger.finest("json that send to dataverse-bridge server (/archive/create):  " + jsonIngestData);
-            StringEntity entity = new StringEntity(jsonIngestData);
-            httpPost.setEntity(entity);
-            httpPost.setHeader("Accept", "application/json");
-            httpPost.setHeader("Content-type", "application/json");
-            switch (httpClient.execute(httpPost).getStatusLine().getStatusCode()) {
-                case HttpStatus.SC_CREATED:
-                    return StateEnum.IN_PROGRESS;
+            switch (response.getStatusLine().getStatusCode()) {
                 case HttpStatus.SC_OK:
-                    return StateEnum.IN_PROGRESS;
-                case HttpStatus.SC_FORBIDDEN:
-                    return StateEnum.INVALID_USER_CREDENTIAL;
+                    JsonReader reader = Json.createReader(new InputStreamReader((response.getEntity().getContent())));
+                    JsonObject jsonObject = reader.readObject();
+                    reader.close();
+                    return jsonObject;
                 case HttpStatus.SC_REQUEST_TIMEOUT:
-                    return StateEnum.REQUEST_TIME_OUT;
+                    JsonReader jsonReader = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.TDR_DOWN.value)));
+                    JsonObject responseJsonObject = jsonReader.readObject();
+                    jsonReader.close();;
+                    return responseJsonObject;
             }
         } catch (IOException e) {
             if (e.getMessage().contains("Connection refused")) {
-                String systemEmail = settingsService.getValueForKey(SettingsServiceBean.Key.SystemEmail);
-                InternetAddress systemAddress = MailUtil.parseSystemAddress(systemEmail);
-                mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail(), "FATAL ERROR ", e.getMessage());
-                return StateEnum.BRIDGE_DOWN;
+                JsonObject responseJsonObject = reportBridgeDown(e);
+                return responseJsonObject;
             }
         }
-        return StateEnum.INTERNAL_SERVER_ERROR;
-
+        JsonReader jsonReader = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.INTERNAL_SERVER_ERROR.value)));
+        JsonObject responseJsonObject = jsonReader.readObject();
+        jsonReader.close();;
+        return responseJsonObject;
     }
 
+    private JsonObject reportBridgeDown(IOException e) {
+        String systemEmail = settingsService.getValueForKey(SettingsServiceBean.Key.SystemEmail);
+        InternetAddress systemAddress = MailUtil.parseSystemAddress(systemEmail);
+        mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail(), "FATAL ERROR ", e.getMessage());
+        JsonReader jsonReader = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.BRIDGE_DOWN.value)));
+        JsonObject responseJsonObject = jsonReader.readObject();
+        jsonReader.close();
+        return responseJsonObject;
+    }
 
     public void addMessage(FacesMessage.Severity severity, String summary, String detail) {
         FacesMessage message = new FacesMessage(severity, summary, detail);

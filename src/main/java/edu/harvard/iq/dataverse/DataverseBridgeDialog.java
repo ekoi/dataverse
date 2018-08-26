@@ -18,8 +18,11 @@ import javax.faces.context.FacesContext;
 import javax.faces.view.ViewScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.json.JsonObject;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -74,48 +77,48 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     public void archive() {
         logger.info("INGEST TO TDR");
 
-        if (tdrName.equals("EASY") || tdrName.equals("DATAVERSE")) {
-            DataverseBridge.StateEnum state;
-            String dvBaseMetadataXml = dvTdrConfs.get(tdrName);
-            try {
-                state = dataverseBridge.ingestToTdr(composeJsonIngestData(dvBaseMetadataXml,tdrName));
-            } catch (IOException e) {
-                logger.severe(e.getMessage());
-                state = DataverseBridge.StateEnum.INTERNAL_SERVER_ERROR;
-            }
-            if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
-                dataverseBridge.updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.toString() + "@" + tdrName);
-                Flowable.fromCallable(() -> {
-                    DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
-                    int hopCount = 0;
-                        while (currentState == DataverseBridge.StateEnum.IN_PROGRESS || hopCount == 10) {
-                        Thread.sleep(600000);//10 minutes
-                        hopCount += 1;
-                        logger.info(".... Cheking Archiving Progress .....[" + hopCount + "]");
-                        currentState = dataverseBridge.checkArchivingProgress(dvBaseMetadataXml, persistentId, datasetVersionFriendlyNumber, tdrName);
-                    }
-                    logger.info("Hop count: " + hopCount + "\t Current state: " + currentState);
-                    return currentState;
-                })
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(Schedulers.single())
-                        .doOnError(
-                                throwable -> {
-                                    String es = throwable.toString();
-                                    logger.severe(es);
-                                }
-                        )
-                        .subscribe(cs -> logger.info("The dataset has been archived."),
-                                throwable -> logger.severe(throwable.getCause().getMessage()));
-
-                FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_INFO
-                                                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress")
-                                                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.detail"));
-                FacesContext.getCurrentInstance().addMessage(null, message);
-            } else {
-                dataverseBridge.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
-            }
+        DataverseBridge.StateEnum state;
+        String dvBaseMetadataXml = dvTdrConfs.get(tdrName);
+        try {
+            JsonObject postResponseJsonObject = dataverseBridge.ingestToTdr(composeJsonIngestData(dvBaseMetadataXml, tdrName));
+            state = DataverseBridge.StateEnum.fromValue(postResponseJsonObject.getString("state"));
+        } catch (IOException e) {
+            logger.severe(e.getMessage());
+            state = DataverseBridge.StateEnum.INTERNAL_SERVER_ERROR;
         }
+        if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
+            dataverseBridge.updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.toString() + "@" + tdrName);
+            Flowable.fromCallable(() -> {
+                DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
+                int hopCount = 0;
+                while (currentState == DataverseBridge.StateEnum.IN_PROGRESS || hopCount == 10) {
+                    Thread.sleep(600000);//10 minutes
+                    hopCount += 1;
+                    logger.info(".... Cheking Archiving Progress .....[" + hopCount + "]");
+                    currentState = dataverseBridge.checkArchivingProgress(dvBaseMetadataXml, persistentId, datasetVersionFriendlyNumber, tdrName);
+                }
+                logger.info("Hop count: " + hopCount + "\t Current state: " + currentState);
+                return currentState;
+            })
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(Schedulers.single())
+                    .doOnError(
+                            throwable -> {
+                                String es = throwable.toString();
+                                logger.severe(es);
+                            }
+                    )
+                    .subscribe(cs -> logger.info("The dataset has been archived."),
+                            throwable -> logger.severe(throwable.getCause().getMessage()));
+
+            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_INFO
+                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress")
+                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.detail"));
+            FacesContext.getCurrentInstance().addMessage(null, message);
+        } else {
+            dataverseBridge.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
+        }
+
     }
 
     private String composeJsonIngestData(String dvBaseMetadataXml, String tdrName) throws JsonProcessingException {
@@ -126,23 +129,19 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     }
 
     private String getApiTokenKey() {
+        //No need user auth check since this class will be only accessed by auth user.
         ApiToken apiToken;
-        if (session.getUser() == null) {
-            return null;
+        AuthenticatedUser au = (AuthenticatedUser) session.getUser();
+        apiToken = authService.findApiTokenByUser(au);
+        if (apiToken != null) {
+            return apiToken.getTokenString();
         }
-        if (session.getUser().isAuthenticated()) {
-            AuthenticatedUser au = (AuthenticatedUser) session.getUser();
-            apiToken = authService.findApiTokenByUser(au);
-            if (apiToken != null) {
-                return apiToken.getTokenString();
-            }
-            // Generate if not available?
-            // Or should it just be generated inside the authService
-            // automatically?
-            apiToken = authService.generateApiTokenForUser(au);
-            if (apiToken != null) {
-                return apiToken.getTokenString();
-            }
+        // Generate if not available?
+        // Or should it just be generated inside the authService
+        // automatically?
+        apiToken = authService.generateApiTokenForUser(au);
+        if (apiToken != null) {
+            return apiToken.getTokenString();
         }
         return "";
     }
