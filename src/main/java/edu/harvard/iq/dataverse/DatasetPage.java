@@ -1555,10 +1555,20 @@ public class DatasetPage implements java.io.Serializable {
             RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
             if (!isUserHasAdminRole(rs))
                 return null;
-
             DataverseBridge dbd = new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
             DataverseBridge.DvBridgeConf dvBridgeConf = dbd.getDvBridgeConf();
             dataverseBridgeEnabled = isUserBelongsToSwordGroup(rs, dvBridgeConf.getUserGroup());
+
+            if (dataverseBridgeEnabled) {
+                for (DatasetVersion dv:dvs) {
+                    String archiveNote = dv.getArchiveNote();
+                    if (archiveNote != null && (archiveNote.equals("INVALID") || archiveNote.equals("FAILED") || archiveNote.equals("REJECTED"))){
+                        dataverseBridgeEnabled = false;
+                        break;
+                    }
+                }
+            }
+
             if (dataverseBridgeEnabled && workingVersion.getArchiveNote() != null && workingVersion.getArchiveNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
                 String tdrName = workingVersion.getArchiveNote().split("@")[1];
                 String dvBaseMetadataXml = dvBridgeConf.getConf().get(tdrName);
