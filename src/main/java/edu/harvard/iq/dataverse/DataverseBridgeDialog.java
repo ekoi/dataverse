@@ -52,11 +52,11 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
     private Logger logger = Logger.getLogger(DataverseBridgeDialog.class.getCanonicalName());
     private String datasetVersionFriendlyNumber;
-    private String tdrUsername;
-    private String tdrPassword;
+    private String darUsername;
+    private String darPassword;
     private Map<String, String> dvTdrConfs = new HashMap<String, String>();
-    private String tdrName = "EASY";
-    private List<String> tdrNames;
+    private String darName = "EASY";
+    private List<String> darNames;
     private String persistentId;
     private DataverseBridge dataverseBridge;
 
@@ -65,7 +65,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         if (session.getUser().isAuthenticated() && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
             dataverseBridge =  new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
             dvTdrConfs = dataverseBridge.getDvBridgeConf().getConf();
-            tdrNames = dvTdrConfs.keySet().stream().collect(Collectors.toList());
+            darNames = dvTdrConfs.keySet().stream().collect(Collectors.toList());
         }
     }
 
@@ -78,24 +78,24 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         logger.info("INGEST TO TDR");
 
         DataverseBridge.StateEnum state;
-        String dvBaseMetadataXml = dvTdrConfs.get(tdrName);
+        String dvBaseMetadataXml = dvTdrConfs.get(darName);
         try {
-            JsonObject postResponseJsonObject = dataverseBridge.ingestToTdr(composeJsonIngestData(dvBaseMetadataXml, tdrName));
+            JsonObject postResponseJsonObject = dataverseBridge.ingestToTdr(composeJsonIngestData(dvBaseMetadataXml, darName));
             state = DataverseBridge.StateEnum.fromValue(postResponseJsonObject.getString("state"));
         } catch (IOException e) {
             logger.severe(e.getMessage());
             state = DataverseBridge.StateEnum.INTERNAL_SERVER_ERROR;
         }
         if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
-            dataverseBridge.updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.toString() + "@" + tdrName);
+            dataverseBridge.updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.toString() + "@" + darName);
             Flowable.fromCallable(() -> {
                 DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
                 int hopCount = 0;
-                while (currentState == DataverseBridge.StateEnum.IN_PROGRESS || hopCount == 10) {
+                while ((currentState == DataverseBridge.StateEnum.IN_PROGRESS) && hopCount < 10) {
                     Thread.sleep(600000);//10 minutes
                     hopCount += 1;
-                    logger.info(".... Cheking Archiving Progress .....[" + hopCount + "]");
-                    currentState = dataverseBridge.checkArchivingProgress(dvBaseMetadataXml, persistentId, datasetVersionFriendlyNumber, tdrName);
+                    logger.info(".... Checking Archiving Progress .....[" + hopCount + "]");
+                    currentState = dataverseBridge.checkArchivingProgress(dvBaseMetadataXml, persistentId, datasetVersionFriendlyNumber, darName);
                 }
                 logger.info("Hop count: " + hopCount + "\t Current state: " + currentState);
                 return currentState;
@@ -123,7 +123,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
     private String composeJsonIngestData(String dvBaseMetadataXml, String tdrName) throws JsonProcessingException {
         SrcData srcData = new SrcData(dvBaseMetadataXml + persistentId, datasetVersionFriendlyNumber, getApiTokenKey());
-        TdrData tdrData = new TdrData(tdrName, tdrUsername, tdrPassword);
+        TdrData tdrData = new TdrData(tdrName, darUsername, darPassword);
         ObjectMapper mapper = new ObjectMapper();
         return mapper.writeValueAsString(new IngestData(srcData, tdrData));
     }
@@ -147,20 +147,20 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     }
 
 
-    public String getTdrUsername() {
-        return tdrUsername;
+    public String getDarUsername() {
+        return darUsername;
     }
 
-    public void setTdrUsername(String tdrUsername) {
-        this.tdrUsername = tdrUsername;
+    public void setDarUsername(String darUsername) {
+        this.darUsername = darUsername;
     }
 
-    public String getTdrPassword() {
-        return tdrPassword;
+    public String getDarPassword() {
+        return darPassword;
     }
 
-    public void setTdrPassword(String tdrPassword) {
-        this.tdrPassword = tdrPassword;
+    public void setDarPassword(String darPassword) {
+        this.darPassword = darPassword;
     }
 
 
@@ -177,20 +177,20 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     }
 
 
-    public void setTdrNames(Map<String, String> dvTdrConfs) {
+    public void setDarNames(Map<String, String> dvTdrConfs) {
         this.dvTdrConfs = dvTdrConfs;
     }
 
-    public String getTdrName() {
-        return tdrName;
+    public String getDarName() {
+        return darName;
     }
 
-    public void setTdrName(String tdrName) {
-        this.tdrName = tdrName;
+    public void setDarName(String darName) {
+        this.darName = darName;
     }
 
-    public List<String> getTdrNames() {
-        return tdrNames;
+    public List<String> getDarNames() {
+        return darNames;
     }
 
 

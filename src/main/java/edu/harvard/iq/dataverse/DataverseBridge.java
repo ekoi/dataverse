@@ -171,22 +171,22 @@ public class DataverseBridge implements java.io.Serializable {
                 msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down");
                 break;
             case TDR_DOWN:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.down");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.down");
                 break;
             case REQUEST_TIME_OUT:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.down");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.down");
                 break;
             case INVALID_USER_CREDENTIAL:
                 sendMailToAdmin = false;
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdrcredentials");
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdrcredentials.detail");
+                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.credentials");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.credentials.detail");
                 break;
             case FAILED:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.failed");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.failed");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case REJECTED:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.rejected");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.rejected");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case IN_PROGRESS:
@@ -196,11 +196,11 @@ public class DataverseBridge implements java.io.Serializable {
                 msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.detail");
                 break;
             case INVALID:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.tdr.invalid");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.invalid");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case ERROR:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.tdr.error");
+                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case INTERNAL_SERVER_ERROR:

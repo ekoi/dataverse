@@ -242,7 +242,7 @@
 
                             <!-- DANS Archive button-->
                             <div class="btn-group pull-right" id="datasetButtonBar" role="group">
-                                <p:commandLink type="button" styleClass="btn btn-default #{DatasetPage.locked ? 'disabled' : ''}" oncomplete="PF('tdrForm').show()"
+                                <p:commandLink type="button" styleClass="btn btn-default #{DatasetPage.locked ? 'disabled' : ''}" oncomplete="PF('darForm').show()"
                                                rendered="#{showDataverseBridge and DatasetPage.workingVersion.archiveNote == null and DatasetPage.workingVersion.isLatestVersion()
                                                					and DatasetPage.dataset.owner.released and permissionsWrapper.canIssuePublishDatasetCommand(DatasetPage.dataset)}">
                                     <f:setPropertyActionListener target="#{dataverseBridgeDialog.datasetVersionFriendlyNumber}" value="#{DatasetPage.workingVersion.versionNumber}.#{DatasetPage.workingVersion.minorVersionNumber}"/>
