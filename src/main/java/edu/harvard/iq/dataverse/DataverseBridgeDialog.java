@@ -54,7 +54,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     private String datasetVersionFriendlyNumber;
     private String darUsername;
     private String darPassword;
-    private Map<String, String> dvTdrConfs = new HashMap<String, String>();
+    private Map<String, String> dvDarConfs = new HashMap<String, String>();
     private String darName = "EASY";
     private List<String> darNames;
     private String persistentId;
@@ -64,8 +64,8 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     public void init() {
         if (session.getUser().isAuthenticated() && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
             dataverseBridge =  new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
-            dvTdrConfs = dataverseBridge.getDvBridgeConf().getConf();
-            darNames = dvTdrConfs.keySet().stream().collect(Collectors.toList());
+            dvDarConfs = dataverseBridge.getDvBridgeConf().getConf();
+            darNames = dvDarConfs.keySet().stream().collect(Collectors.toList());
         }
     }
 
@@ -75,12 +75,12 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     }
 
     public void archive() {
-        logger.info("INGEST TO TDR");
+        logger.info("INGEST TO Digital Arichive Repository");
 
         DataverseBridge.StateEnum state;
-        String dvBaseMetadataXml = dvTdrConfs.get(darName);
+        String dvBaseMetadataXml = dvDarConfs.get(darName);
         try {
-            JsonObject postResponseJsonObject = dataverseBridge.ingestToTdr(composeJsonIngestData(dvBaseMetadataXml, darName));
+            JsonObject postResponseJsonObject = dataverseBridge.ingestToDar(composeJsonIngestData(dvBaseMetadataXml, darName));
             state = DataverseBridge.StateEnum.fromValue(postResponseJsonObject.getString("state"));
         } catch (IOException e) {
             logger.severe(e.getMessage());
@@ -121,11 +121,11 @@ public class DataverseBridgeDialog implements java.io.Serializable {
 
     }
 
-    private String composeJsonIngestData(String dvBaseMetadataXml, String tdrName) throws JsonProcessingException {
+    private String composeJsonIngestData(String dvBaseMetadataXml, String darName) throws JsonProcessingException {
         SrcData srcData = new SrcData(dvBaseMetadataXml + persistentId, datasetVersionFriendlyNumber, getApiTokenKey());
-        TdrData tdrData = new TdrData(tdrName, darUsername, darPassword);
+        DarData darData = new DarData(darName, darUsername, darPassword);
         ObjectMapper mapper = new ObjectMapper();
-        return mapper.writeValueAsString(new IngestData(srcData, tdrData));
+        return mapper.writeValueAsString(new IngestData(srcData, darData));
     }
 
     private String getApiTokenKey() {
@@ -177,8 +177,8 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     }
 
 
-    public void setDarNames(Map<String, String> dvTdrConfs) {
-        this.dvTdrConfs = dvTdrConfs;
+    public void setDarNames(Map<String, String> dvDarConfs) {
+        this.dvDarConfs = dvDarConfs;
     }
 
     public String getDarName() {
@@ -218,12 +218,12 @@ public class DataverseBridgeDialog implements java.io.Serializable {
             return apiToken;
         }
     }
-    private class TdrData {
+    private class DarData {
         private String username;
         private String password;
-        private String tdrName;
-        public TdrData(String tdrName, String username, String password) {
-            this.tdrName = tdrName;
+        private String darName;
+        public DarData(String darName, String username, String password) {
+            this.darName = darName;
             this.username = username;
             this.password = password;
         }
@@ -236,25 +236,25 @@ public class DataverseBridgeDialog implements java.io.Serializable {
             return password;
         }
 
-        public String getTdrName() {
-            return tdrName;
+        public String getDarName() {
+            return darName;
         }
     }
     private class IngestData{
         private SrcData srcData;
-        private TdrData tdrData;
+        private DarData darData;
 
-        public IngestData(SrcData srcData, TdrData tdrData) {
+        public IngestData(SrcData srcData, DarData darData) {
             this.srcData = srcData;
-            this.tdrData = tdrData;
+            this.darData = darData;
         }
 
         public SrcData getSrcData() {
             return srcData;
         }
 
-        public TdrData getTdrData() {
-            return tdrData;
+        public DarData getDarData() {
+            return darData;
         }
     }
 

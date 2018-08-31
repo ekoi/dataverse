@@ -1570,9 +1570,9 @@ public class DatasetPage implements java.io.Serializable {
             }
 
             if (dataverseBridgeEnabled && workingVersion.getArchiveNote() != null && workingVersion.getArchiveNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
-                String tdrName = workingVersion.getArchiveNote().split("@")[1];
-                String dvBaseMetadataXml = dvBridgeConf.getConf().get(tdrName);
-                DataverseBridge.StateEnum state = dbd.checkArchivingProgress(dvBaseMetadataXml ,persistentId, workingVersion.getFriendlyVersionNumber(), tdrName);
+                String darName = workingVersion.getArchiveNote().split("@")[1];
+                String dvBaseMetadataXml = dvBridgeConf.getConf().get(darName);
+                DataverseBridge.StateEnum state = dbd.checkArchivingProgress(dvBaseMetadataXml ,persistentId, workingVersion.getFriendlyVersionNumber(), darName);
                 logger.info("State: " + state);
             }
         }

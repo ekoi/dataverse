@@ -60,7 +60,7 @@ public class DataverseBridge implements java.io.Serializable {
         ARCHIVED("ARCHIVED"),
         REJECTED("REJECTED"),
         INVALID("INVALID"),
-        TDR_DOWN("TDR-DOWN"),
+        DAR_DOWN("DAR-DOWN"),
         BRIDGE_DOWN("BRIDGE-DOWN"),
         INVALID_USER_CREDENTIAL("INVALID_USER_CREDENTIAL"),
         REQUEST_TIME_OUT("REQUEST_TIME_OUT"),
@@ -95,10 +95,10 @@ public class DataverseBridge implements java.io.Serializable {
         this.dvBridgeConf = getDvBridgeConf(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf));
     }
 
-    public JsonObject ingestToTdr(String ingestData) {
+    public JsonObject ingestToDar(String ingestData) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(dvBridgeConf.dataverseBridgeUrl + "/archive/create");
-            logger.finest("json that send to dataverse-bridge server (/archive/create):  " + ingestData);
+            HttpPost httpPost = new HttpPost(dvBridgeConf.dataverseBridgeUrl + "/archiving");
+            logger.finest("json that send to dataverse-bridge server (/archiving):  " + ingestData);
             StringEntity entity = new StringEntity(ingestData);
             httpPost.setEntity(entity);
             httpPost.setHeader("Accept", "application/json");
@@ -117,10 +117,10 @@ public class DataverseBridge implements java.io.Serializable {
                     jsonReader.close();
                     return jo;
                 case HttpStatus.SC_REQUEST_TIMEOUT:
-                    JsonReader readerTdrDown = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.TDR_DOWN.value)));
-                    JsonObject tdrDownJsonObject = readerTdrDown.readObject();
-                    readerTdrDown.close();;
-                    return tdrDownJsonObject;
+                    JsonReader readerDarDown = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.DAR_DOWN.value)));
+                    JsonObject darDownJsonObject = readerDarDown.readObject();
+                    readerDarDown.close();;
+                    return darDownJsonObject;
             }
         } catch (IOException e) {
             if (e.getMessage().contains("Connection refused")) {
@@ -135,28 +135,25 @@ public class DataverseBridge implements java.io.Serializable {
         return responseJsonObject;
     }
 
-    public StateEnum checkArchivingProgress(String dvBaseMetadataXml, String persistentId, String datasetVersionFriendlyNumber, String tdrName) {
+    public StateEnum checkArchivingProgress(String dvBaseMetadataXml, String persistentId, String datasetVersionFriendlyNumber, String darName) {
         StateEnum state = StateEnum.INTERNAL_SERVER_ERROR;
         logger.info("Check archiving state....");
-        JsonObject jsonObjectArchived = null;
+        JsonObject jsonObjectReponse = null;
         String path = null;
         try {
-            path = dvBridgeConf.dataverseBridgeUrl + "/archive/state?srcMetadataXml="
+            path = dvBridgeConf.dataverseBridgeUrl + "/archiving/state?srcMetadataXml="
                     + URLEncoder.encode(dvBaseMetadataXml + persistentId, StandardCharsets.UTF_8.toString())
-                    + "&srcMetadataVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetTdrName=" + tdrName;
-            jsonObjectArchived = retrieveGETResponseAsJsonObject(path);
-            state = StateEnum.fromValue(jsonObjectArchived.getString("state", "UNKNOWN-ERROR"));
+                    + "&srcMetadataVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetDarName=" + darName;
+            jsonObjectReponse = retrieveGETResponseAsJsonObject(path);
+            state = StateEnum.fromValue(jsonObjectReponse.getString("state", "UNKNOWN-ERROR"));
+            logger.info("ARCHIVING state: " + state);
             if (state == StateEnum.ARCHIVED) {
-                    logger.info("Update archiving state in the datasetVersion table.");
-                    updateDatasetVersionToArchived(persistentId, datasetVersionFriendlyNumber, jsonObjectArchived);
-            }
+                logger.info("Update archiving state in the datasetVersion table.");
+                updateDatasetVersionToArchived(persistentId, datasetVersionFriendlyNumber, jsonObjectReponse);
+            } else
+                updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
         } catch (UnsupportedEncodingException e) {
             logger.severe(e.getMessage());
-        }
-
-        if (state != StateEnum.ARCHIVED) {
-            logger.info("ARCHIVING state: " + state);
-            updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
         }
         return state;
     }
@@ -170,7 +167,7 @@ public class DataverseBridge implements java.io.Serializable {
             case BRIDGE_DOWN:
                 msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down");
                 break;
-            case TDR_DOWN:
+            case DAR_DOWN:
                 msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.down");
                 break;
             case REQUEST_TIME_OUT:
@@ -248,7 +245,7 @@ public class DataverseBridge implements java.io.Serializable {
                     reader.close();
                     return jsonObject;
                 case HttpStatus.SC_REQUEST_TIMEOUT:
-                    JsonReader jsonReader = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.TDR_DOWN.value)));
+                    JsonReader jsonReader = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.DAR_DOWN.value)));
                     JsonObject responseJsonObject = jsonReader.readObject();
                     jsonReader.close();;
                     return responseJsonObject;
@@ -289,7 +286,7 @@ public class DataverseBridge implements java.io.Serializable {
                 , dvBridgeSettingJsonObject.getString("user-group")
                 , dvBridgeSettingJsonObject.getJsonArray("conf").stream().map(JsonObject.class::cast)
                 .collect(Collectors.toMap(
-                        k -> k.getJsonString("tdrName").getString(),
+                        k -> k.getJsonString("darName").getString(),
                         v -> v.getString("dvBaseMetadataXml"))));
         return dvBridgeConf;
     }
