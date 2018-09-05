@@ -1573,7 +1573,7 @@ public class DatasetPage implements java.io.Serializable {
                 String darName = workingVersion.getArchiveNote().split("@")[1];
                 String dvBaseMetadataXml = dvBridgeConf.getConf().get(darName);
                 DataverseBridge.StateEnum state = dbd.checkArchivingProgress(dvBaseMetadataXml ,persistentId, workingVersion.getFriendlyVersionNumber(), darName);
-                logger.info("State: " + state);
+                logger.info("Archiving state of '" + persistentId + "': " + state);
             }
         }
         return null;

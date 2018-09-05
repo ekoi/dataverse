@@ -75,8 +75,10 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     }
 
     public void archive() {
-        logger.info("INGEST TO Digital Arichive Repository");
+        logger.info("INGEST TO Digital Archive Repository");
 
+        AuthenticatedUser au = (AuthenticatedUser) session.getUser();
+        logger.info(" The user '" + au.getIdentifier() + "' is trying to archive '" + persistentId + "' to '" + darName + "'.");
         DataverseBridge.StateEnum state;
         String dvBaseMetadataXml = dvDarConfs.get(darName);
         try {
@@ -92,12 +94,12 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                 DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
                 int hopCount = 0;
                 while ((currentState == DataverseBridge.StateEnum.IN_PROGRESS) && hopCount < 10) {
-                    Thread.sleep(600000);//10 minutes
+                    Thread.sleep(900000);//15 minutes
                     hopCount += 1;
-                    logger.info(".... Checking Archiving Progress .....[" + hopCount + "]");
+                    logger.info(".... Checking Archiving Progress of " + persistentId + ".....[" + hopCount + "]");
                     currentState = dataverseBridge.checkArchivingProgress(dvBaseMetadataXml, persistentId, datasetVersionFriendlyNumber, darName);
                 }
-                logger.info("Hop count: " + hopCount + "\t Current state: " + currentState);
+                logger.info("Hop count: " + hopCount + "\t Current state of '" + persistentId + "': " + currentState);
                 return currentState;
             })
                     .subscribeOn(Schedulers.io())
@@ -108,7 +110,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                                 logger.severe(es);
                             }
                     )
-                    .subscribe(cs -> logger.info("The dataset has been archived."),
+                    .subscribe(cs -> logger.info("The dataset of '" + persistentId + "' has been archived."),
                             throwable -> logger.severe(throwable.getCause().getMessage()));
 
             FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_INFO
