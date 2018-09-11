@@ -2,6 +2,10 @@ package edu.harvard.iq.dataverse;
 
 import edu.harvard.iq.dataverse.authorization.AuthenticationServiceBean;
 import edu.harvard.iq.dataverse.authorization.Permission;
+import edu.harvard.iq.dataverse.authorization.RoleAssignmentSet;
+import edu.harvard.iq.dataverse.authorization.groups.Group;
+import edu.harvard.iq.dataverse.authorization.groups.GroupServiceBean;
+import edu.harvard.iq.dataverse.authorization.groups.impl.explicit.ExplicitGroup;
 import edu.harvard.iq.dataverse.authorization.providers.builtin.BuiltinUserServiceBean;
 import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
 import edu.harvard.iq.dataverse.authorization.users.PrivateUrlUser;
@@ -62,6 +66,7 @@ import java.util.logging.Logger;
 import javax.ejb.EJB;
 import javax.ejb.EJBException;
 import javax.faces.application.FacesMessage;
+import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ValueChangeEvent;
@@ -173,6 +178,10 @@ public class DatasetPage implements java.io.Serializable {
     PrivateUrlServiceBean privateUrlService;
     @EJB
     ExternalToolServiceBean externalToolService;
+    @EJB
+    MailServiceBean mailServiceBean;
+    @EJB
+    GroupServiceBean groupService;
 
     @Inject
     DataverseRequestServiceBean dvRequestService;
@@ -187,7 +196,7 @@ public class DatasetPage implements java.io.Serializable {
     @Inject
     ThumbnailServiceWrapper thumbnailServiceWrapper;
     @Inject
-    SettingsWrapper settingsWrapper; 
+    SettingsWrapper settingsWrapper;
     
 
 
@@ -219,6 +228,8 @@ public class DatasetPage implements java.io.Serializable {
     private String authority = "";
     private String separator = "";
     private String customFields="";
+    private boolean dataverseBridgeEnabled;
+    private boolean displayArchivedColumn;
 
     private boolean noDVsAtAll = false;
 
@@ -409,7 +420,7 @@ public class DatasetPage implements java.io.Serializable {
             }
         }
         
-        List<FileMetadata> retList = new ArrayList<>(); 
+        List<FileMetadata> retList = new ArrayList<>();
         
         for (FileMetadata fileMetadata : workingVersion.getFileMetadatasSorted()) {
             if (searchResultsIdSet == null || searchResultsIdSet.contains(fileMetadata.getId())) {
@@ -1112,7 +1123,7 @@ public class DatasetPage implements java.io.Serializable {
             Format:  {  DatasetFieldType.id : DatasetField }
          --------------------------------------------------------- */
         // Initialize Map
-        Map<Long, DatasetField> mapDatasetFields = new HashMap<>();   
+        Map<Long, DatasetField> mapDatasetFields = new HashMap<>();
 
         // Populate Map
          for (DatasetField dsf : workingVersion.getFlatDatasetFields()) {
@@ -1136,7 +1147,7 @@ public class DatasetPage implements java.io.Serializable {
             
             if (oneDSFieldTypeInputLevel != null) {
                 // Is the DatasetField in the hash?    hash format: {  DatasetFieldType.id : DatasetField }
-                DatasetField dsf = mapDatasetFields.get(oneDSFieldTypeInputLevel.getDatasetFieldType().getId());  
+                DatasetField dsf = mapDatasetFields.get(oneDSFieldTypeInputLevel.getDatasetFieldType().getId());
                 if (dsf != null){
                     // Yes, call "setInclude"
                     dsf.setInclude(oneDSFieldTypeInputLevel.isInclude());
@@ -1532,9 +1543,75 @@ public class DatasetPage implements java.io.Serializable {
         configureTools = externalToolService.findByType(ExternalTool.Type.CONFIGURE);
         exploreTools = externalToolService.findByType(ExternalTool.Type.EXPLORE);
 
+        List<DatasetVersion> dvs = dataset.getVersions();
+        for (DatasetVersion dv:dvs) {
+            if (dv.getArchiveNote() != null) {
+                displayArchivedColumn = true;
+                break;
+            }
+        }
+        if (isSessionUserAuthenticated() && workingVersion.isReleased()
+                && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
+            RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
+            if (!isUserHasAdminRole(rs))
+                return null;
+            DataverseBridge dbd = new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
+            DataverseBridge.DvBridgeConf dvBridgeConf = dbd.getDvBridgeConf();
+            dataverseBridgeEnabled = isUserBelongsToSwordGroup(rs, dvBridgeConf.getUserGroup());
+
+            if (dataverseBridgeEnabled) {
+                for (DatasetVersion dv:dvs) {
+                    String archiveNote = dv.getArchiveNote();
+                    if (archiveNote != null && (archiveNote.equals("INVALID") || archiveNote.equals("FAILED") || archiveNote.equals("REJECTED"))){
+                        dataverseBridgeEnabled = false;
+                        break;
+                    }
+                }
+            }
+
+            if (dataverseBridgeEnabled && workingVersion.getArchiveNote() != null && workingVersion.getArchiveNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
+                String darName = workingVersion.getArchiveNote().split("@")[1];
+                String dvBaseMetadataXml = dvBridgeConf.getConf().get(darName);
+                DataverseBridge.StateEnum state = dbd.checkArchivingProgress(dvBaseMetadataXml ,persistentId, workingVersion.getFriendlyVersionNumber(), darName);
+                logger.info("Archiving state of '" + persistentId + "': " + state);
+            }
+        }
         return null;
     }
-    
+    public void reload() throws IOException {
+        ExternalContext ec = FacesContext.getCurrentInstance().getExternalContext();
+        ec.redirect("");
+    }
+    public boolean isDisplayArchivedColumn() {
+        return displayArchivedColumn;
+    }
+
+    private boolean isUserBelongsToSwordGroup(RoleAssignmentSet rs, String userGroup) {
+        Set<Group> sg = groupService.groupsFor( rs.getRoleAssignee(), dataset.getOwner());
+        for (Group g:sg){
+            if (g instanceof ExplicitGroup &&
+                ((ExplicitGroup)g).getGroupAliasInOwner().equals(userGroup)) {
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isUserHasAdminRole( RoleAssignmentSet rs) {
+        Set<RoleAssignment> sra = rs.getAssignments();
+        for(RoleAssignment r:sra ){
+           if (r.getRole().getAlias().equals("admin")) {
+               return true;
+           }
+        }
+        return false;
+    }
+
+
+    public boolean isDataverseBridgeEnabled() {
+        return dataverseBridgeEnabled;
+    }
+
     public boolean isReadOnly() {
         return readOnly; 
     }
@@ -1584,7 +1661,7 @@ public class DatasetPage implements java.io.Serializable {
                                 if (subField.getDatasetFieldType().getName().equals(DatasetFieldConstant.authorIdValue)) {
                                     subField.getDatasetFieldValues().get(0).setValue(creatorOrcidId);
                                 }
-                                if (subField.getDatasetFieldType().getName().equals(DatasetFieldConstant.authorIdType)) {  
+                                if (subField.getDatasetFieldType().getName().equals(DatasetFieldConstant.authorIdType)) {
                                    DatasetFieldType authorIdTypeDatasetField = fieldService.findByName(DatasetFieldConstant.authorIdType);
                                    subField.setSingleControlledVocabularyValue(fieldService.findControlledVocabularyValueByDatasetFieldTypeAndStrValue(authorIdTypeDatasetField, "ORCID", true));
                                 }                                
@@ -1873,9 +1950,9 @@ public class DatasetPage implements java.io.Serializable {
         if (session.getUser() instanceof AuthenticatedUser) {
             try {
                 if (editMode == EditMode.CREATE) { //FIXME: Why are we using the same commands?
-                    cmd = new PublishDatasetCommand(dataset, dvRequestService.getDataverseRequest(), minor); 
+                    cmd = new PublishDatasetCommand(dataset, dvRequestService.getDataverseRequest(), minor);
                 } else {
-                    cmd = new PublishDatasetCommand(dataset, dvRequestService.getDataverseRequest(), minor); 
+                    cmd = new PublishDatasetCommand(dataset, dvRequestService.getDataverseRequest(), minor);
                 }
                 dataset = commandEngine.submit(cmd).getDataset();
                 // Sucessfully executing PublishDatasetCommand does not guarantee that the dataset 
@@ -2474,7 +2551,7 @@ public class DatasetPage implements java.io.Serializable {
             if (editMode == EditMode.CREATE) {
                 if ( selectedTemplate != null ) {
                     if ( isSessionUserAuthenticated() ) {
-                        cmd = new CreateDatasetCommand(dataset, dvRequestService.getDataverseRequest(), false, null, selectedTemplate); 
+                        cmd = new CreateDatasetCommand(dataset, dvRequestService.getDataverseRequest(), false, null, selectedTemplate);
                     } else {
                         JH.addMessage(FacesMessage.SEVERITY_FATAL, JH.localize("dataset.create.authenticatedUsersOnly"));
                         return null;
@@ -2485,7 +2562,7 @@ public class DatasetPage implements java.io.Serializable {
                 
             } else {
                 cmd = new UpdateDatasetCommand(dataset, dvRequestService.getDataverseRequest(), filesToBeDeleted);
-                ((UpdateDatasetCommand) cmd).setValidateLenient(true);  
+                ((UpdateDatasetCommand) cmd).setValidateLenient(true);
             }
             dataset = commandEngine.submit(cmd);
             if (editMode == EditMode.CREATE) {
@@ -2653,7 +2730,7 @@ public class DatasetPage implements java.io.Serializable {
     
     public boolean isDatasetLockedInWorkflow() {
         return (dataset != null) 
-                ? dataset.isLockedFor(DatasetLock.Reason.Workflow) 
+                ? dataset.isLockedFor(DatasetLock.Reason.Workflow)
                 : false;
     }
     
@@ -3014,7 +3091,7 @@ public class DatasetPage implements java.io.Serializable {
             String formatName = provider[1];
             String formatDisplayName = provider[0];
             
-            Exporter exporter = null; 
+            Exporter exporter = null;
             try {
                 exporter = ExportService.getInstance(settingsService).getExporter(formatName);
             } catch (ExportException ex) {
@@ -3093,7 +3170,7 @@ public class DatasetPage implements java.io.Serializable {
      * Items for the "Designated this image as the Dataset thumbnail: 
      */
     
-    private FileMetadata fileMetadataSelectedForThumbnailPopup = null; 
+    private FileMetadata fileMetadataSelectedForThumbnailPopup = null;
 
     public void  setFileMetadataSelectedForThumbnailPopup(FileMetadata fm){
        fileMetadataSelectedForThumbnailPopup = fm; 
@@ -3167,7 +3244,7 @@ public class DatasetPage implements java.io.Serializable {
      * Items for the "Tags (Categories)" popup.
      *
      */
-    private FileMetadata fileMetadataSelectedForTagsPopup = null; 
+    private FileMetadata fileMetadataSelectedForTagsPopup = null;
     
     public void  setFileMetadataSelectedForTagsPopup(){
 
@@ -3478,7 +3555,7 @@ public class DatasetPage implements java.io.Serializable {
      * Items for the "Advanced (Ingest) Options" popup. 
      * 
      */
-    private FileMetadata fileMetadataSelectedForIngestOptionsPopup = null; 
+    private FileMetadata fileMetadataSelectedForIngestOptionsPopup = null;
 
     public void  setFileMetadataSelectedForIngestOptionsPopup(FileMetadata fm){
        fileMetadataSelectedForIngestOptionsPopup = fm; 
