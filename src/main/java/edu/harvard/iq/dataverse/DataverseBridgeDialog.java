@@ -100,7 +100,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
                                     logger.severe(es);
                                 }
                         )
-                        .subscribe(cs -> logger.info("The dataset of '" + persistentId + "' with version: " + datasetVersionFriendlyNumber + " has been archived."),
+                        .subscribe(cs -> logger.info("The archiving process of dataset of '" + persistentId + "' with version: " + datasetVersionFriendlyNumber + " is done."),
                                 throwable -> logger.severe(throwable.getMessage()));
 
                 FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_INFO
@@ -115,7 +115,7 @@ public class DataverseBridgeDialog implements java.io.Serializable {
             logger.severe("Failed to compose ingest data.");
             mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail()
                     , "Failed to compose ingest data.", "persistentId: " + persistentId + "\nVersion: " + datasetVersionFriendlyNumber );
-            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_INFO
+            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR
                     , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.transfer")
                     , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown"));
             FacesContext.getCurrentInstance().addMessage(null, message);
