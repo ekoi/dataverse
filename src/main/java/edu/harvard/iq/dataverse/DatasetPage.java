@@ -55,13 +55,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
 import javax.ejb.EJB;
 import javax.ejb.EJBException;
@@ -78,10 +72,10 @@ import org.primefaces.model.UploadedFile;
 import javax.validation.ConstraintViolation;
 import org.apache.commons.httpclient.HttpClient;
 import org.primefaces.context.RequestContext;
-import java.util.Arrays;
-import java.util.HashSet;
+
 import javax.faces.model.SelectItem;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 import edu.harvard.iq.dataverse.datasetutility.WorldMapPermissionHelper;
 import edu.harvard.iq.dataverse.engine.command.exception.IllegalCommandException;
 import edu.harvard.iq.dataverse.engine.command.impl.GetLatestPublishedDatasetVersionCommand;
@@ -93,7 +87,6 @@ import edu.harvard.iq.dataverse.engine.command.impl.SubmitDatasetForReviewComman
 import edu.harvard.iq.dataverse.externaltools.ExternalTool;
 import edu.harvard.iq.dataverse.externaltools.ExternalToolServiceBean;
 import edu.harvard.iq.dataverse.export.SchemaDotOrgExporter;
-import java.util.Collections;
 
 import javax.faces.event.AjaxBehaviorEvent;
 import javax.servlet.ServletOutputStream;
@@ -229,6 +222,12 @@ public class DatasetPage implements java.io.Serializable {
     private String separator = "";
     private String customFields="";
     private boolean dataverseBridgeEnabled;
+    private String swordGroupAlias;
+    private String darName;
+    private List<String> darNameList;
+    private String darUsername;
+    private String darPassword;
+    private String darUserAffiliation;
     private boolean displayArchivedColumn;
 
     private boolean noDVsAtAll = false;
@@ -1555,24 +1554,44 @@ public class DatasetPage implements java.io.Serializable {
             RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
             if (!isUserHasAdminRole(rs))
                 return null;
+            darNameList = new ArrayList<>();
             DataverseBridge dbd = new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
-            DataverseBridge.DvBridgeConf dvBridgeConf = dbd.getDvBridgeConf();
-            dataverseBridgeEnabled = isUserBelongsToSwordGroup(rs, dvBridgeConf.getUserGroup());
+            DataverseBridge.DataverseBridgeSetting dataverseBridgeSetting = dbd.getDataverseBridgeSetting();
+            List<DataverseBridge.DarSetting> darSettingList = dataverseBridgeSetting.getDarSettings();
+            if (darSettingList.isEmpty()) {
+                //todo: errror message
+                swordGroupAlias = null;
+            } else if (darSettingList.size() == 1) {
+                DataverseBridge.DarSetting darSetting = darSettingList.get(0);
+                swordGroupAlias = getSwordUserGroupAlias(rs, darSetting.getUserGroups());
+                DataverseBridge.DarUser darUser = darSetting.getDarUsers().stream().filter(j-> j.getGroupName().equals(swordGroupAlias)).findAny().orElse(null);
+                if (darUser != null) {
+                    darName = darSetting.getDarName();
+                    darNameList.add(darSetting.getDarName());
+                    darUsername = darUser.getDarUsername();
+                    darPassword = darUser.getDarPassword();
+                    darUserAffiliation = darUser.getDarUsernameAffiliation();
+                }
+            } else {
+                List<String> userGroupList = dataverseBridgeSetting.getDarSettings().stream().map(x -> x.getUserGroups()).flatMap(Collection::stream).collect(Collectors.toList());
+                swordGroupAlias = getSwordUserGroupAlias(rs, userGroupList);
+            }
+            dataverseBridgeEnabled = (swordGroupAlias != null);
 
             if (dataverseBridgeEnabled) {
                 for (DatasetVersion dv:dvs) {
-                    String archiveNote = dv.getArchiveNote();
-                    if (archiveNote != null && (archiveNote.equals("INVALID") || archiveNote.equals("FAILED") || archiveNote.equals("REJECTED"))){
+                    String darNote = dv.getDarNote();
+                    if (darNote != null && (darNote.equals("INVALID") || darNote.equals("FAILED") || darNote.equals("REJECTED"))){
                         dataverseBridgeEnabled = false;
                         break;
                     }
                 }
             }
 
-            if (dataverseBridgeEnabled && workingVersion.getArchiveNote() != null && workingVersion.getArchiveNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
-                String darName = workingVersion.getArchiveNote().split("@")[1];
-                String dvBaseMetadataXml = dvBridgeConf.getConf().get(darName);
-                DataverseBridge.StateEnum state = dbd.checkArchivingProgress(dvBaseMetadataXml ,persistentId, workingVersion.getFriendlyVersionNumber(), darName);
+            if (dataverseBridgeEnabled && workingVersion.getDarNote() != null && workingVersion.getDarNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
+                String darName = workingVersion.getDarNote().split("@")[1];
+                String dvBaseMetadataUrl = dataverseBridgeSetting.getMetadataUrl();
+                DataverseBridge.StateEnum state = dbd.checkArchivingProgress(dvBaseMetadataUrl ,persistentId, workingVersion.getFriendlyVersionNumber(), darName);
                 logger.info("Archiving state of '" + persistentId + "': " + state);
             }
         }
@@ -1582,19 +1601,43 @@ public class DatasetPage implements java.io.Serializable {
         ExternalContext ec = FacesContext.getCurrentInstance().getExternalContext();
         ec.redirect("");
     }
+
+    public String getSwordGroupAlias() {
+        return swordGroupAlias;
+    }
+
+    public String getDarName() {
+        return darName;
+    }
+
+    public List<String> getDarNameList() {
+        return darNameList;
+    }
+
+    public String getDarUsername() {
+        return darUsername;
+    }
+
+    public String getDarPassword() {
+        return darPassword;
+    }
+
+    public String getDarUserAffiliation() {
+        return darUserAffiliation;
+    }
+
     public boolean isDisplayArchivedColumn() {
         return displayArchivedColumn;
     }
 
-    private boolean isUserBelongsToSwordGroup(RoleAssignmentSet rs, String userGroup) {
+    private String getSwordUserGroupAlias(RoleAssignmentSet rs, List<String> userGroups) {
         Set<Group> sg = groupService.groupsFor( rs.getRoleAssignee(), dataset.getOwner());
         for (Group g:sg){
-            if (g instanceof ExplicitGroup &&
-                ((ExplicitGroup)g).getGroupAliasInOwner().equals(userGroup)) {
-                    return true;
+            if (g instanceof ExplicitGroup && userGroups.contains(((ExplicitGroup)g).getGroupAliasInOwner())) {
+                    return ((ExplicitGroup)g).getGroupAliasInOwner();
             }
         }
-        return false;
+        return null;
     }
 
     private boolean isUserHasAdminRole( RoleAssignmentSet rs) {

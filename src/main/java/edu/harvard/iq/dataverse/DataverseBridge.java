@@ -4,6 +4,7 @@ import edu.harvard.iq.dataverse.authorization.AuthenticationServiceBean;
 import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
 import edu.harvard.iq.dataverse.util.BundleUtil;
 import edu.harvard.iq.dataverse.util.MailUtil;
+import edu.harvard.iq.dataverse.util.SystemConfig;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -17,6 +18,7 @@ import javax.faces.context.FacesContext;
 import javax.faces.view.ViewScoped;
 import javax.inject.Named;
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.mail.internet.InternetAddress;
@@ -28,9 +30,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
-import java.util.Map;
+import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -47,9 +48,8 @@ public class DataverseBridge implements java.io.Serializable {
     private SettingsServiceBean settingsService;
     private AuthenticationServiceBean authService;
     private MailServiceBean mailServiceBean;
-    private DvBridgeConf dvBridgeConf;
+    private DataverseBridgeSetting dataverseBridgeSetting;
     private String userMail;
-
 
     private Logger logger = Logger.getLogger(DataverseBridge.class.getCanonicalName());
     private static String RESPONSE_STATE = "{ \"state\":\"value\" }";
@@ -86,24 +86,26 @@ public class DataverseBridge implements java.io.Serializable {
         }
     }
 
-    public DataverseBridge(String userMail, SettingsServiceBean settingsService, DatasetServiceBean datasetService, DatasetVersionServiceBean datasetVersionService, AuthenticationServiceBean authService, MailServiceBean mailServiceBean){
+    public DataverseBridge(String userMail, SettingsServiceBean settingsService, DatasetServiceBean datasetService, DatasetVersionServiceBean datasetVersionService, AuthenticationServiceBean authService, MailServiceBean mailServiceBean) {
         this.userMail = userMail;
         this.settingsService = settingsService;
         this.datasetService = datasetService;
         this.datasetVersionService = datasetVersionService;
         this.authService = authService;
         this.mailServiceBean = mailServiceBean;
-        this.dvBridgeConf = getDvBridgeConf(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf));
+        this.dataverseBridgeSetting = getDvBridgeConf(settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf));
     }
 
-    public JsonObject ingestToDar(String ingestData) {
+    public JsonObject ingestToDar(String ingestData, boolean skipDarAuthPreCheck) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(dvBridgeConf.dataverseBridgeUrl + "/archiving");
+            HttpPost httpPost = new HttpPost(dataverseBridgeSetting.dvnBrgSettingBridge.url + "/archiving");
             logger.finest("json that send to dataverse-bridge server (/archiving):  " + ingestData);
             StringEntity entity = new StringEntity(ingestData);
             httpPost.setEntity(entity);
             httpPost.setHeader("Accept", "application/json");
             httpPost.setHeader("Content-type", "application/json");
+            httpPost.setHeader("api_key", dataverseBridgeSetting.dvnBrgSettingBridge.apiKey);
+            httpPost.setHeader("skipDarAuthPreCheck", Boolean.toString(skipDarAuthPreCheck));
             CloseableHttpResponse response = httpClient.execute(httpPost);
             switch (response.getStatusLine().getStatusCode()) {
                 case HttpStatus.SC_CREATED:
@@ -145,7 +147,7 @@ public class DataverseBridge implements java.io.Serializable {
         JsonObject jsonObjectReponse;
         String path;
         try {
-            path = dvBridgeConf.dataverseBridgeUrl + "/archiving/state?srcMetadataXml="
+            path = dataverseBridgeSetting.dvnBrgSettingBridge.url + "/archiving/state?srcMetadataUrl="
                     + URLEncoder.encode(dvBaseMetadataXml + persistentId, StandardCharsets.UTF_8.toString())
                     + "&srcMetadataVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetDarName=" + darName;
             jsonObjectReponse = retrieveGETResponseAsJsonObject(path);
@@ -167,64 +169,74 @@ public class DataverseBridge implements java.io.Serializable {
     }
 
     public void updateArchivenoteAndDisplayMessage(String persistentId, String datasetVersionFriendlyNumber, StateEnum state) {
-        String msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.transfer");
-        String msgDetails = "";
+        String displayMessage = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.transfer");
+        String displayMessageDetails = "";
+        String emailSubject = state.value + " on persistentId: " + persistentId + " Version: " + datasetVersionFriendlyNumber;
+        String emailMessage = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.email",
+                Arrays.asList(SystemConfig.getDataverseSiteUrlStatic(), persistentId, datasetVersionFriendlyNumber));
         boolean sendMailToAdmin = true;
         FacesMessage.Severity fs = FacesMessage.SEVERITY_ERROR;
         switch (state) {
             case BRIDGE_DOWN:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down");
+                displayMessageDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down");
+                emailMessage = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.bridgeserver.down.email");
+                emailSubject = state.value;
                 break;
             case DAR_DOWN:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.down");
-                break;
             case REQUEST_TIME_OUT:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.down");
+                displayMessageDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.dar.down");
+                emailMessage = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.dar.down.email");
+                emailSubject = state.value;
                 break;
             case INVALID_USER_CREDENTIAL:
                 sendMailToAdmin = false;
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.credentials");
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.credentials.detail");
+                displayMessage = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.credentials");
+                displayMessageDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.credentials.detail");
                 break;
             case FAILED:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.failed");
+                displayMessageDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.failed");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case REJECTED:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.rejected");
+                displayMessageDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.rejected");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case IN_PROGRESS:
                 sendMailToAdmin = false;
                 fs = FacesMessage.SEVERITY_INFO;
-                msg = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress");
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.detail");
+                displayMessage = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress");
+                displayMessageDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.detail");
                 break;
             case INVALID:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.invalid");
+                displayMessageDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.invalid");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case ERROR:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown");
+                displayMessageDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown");
                 updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.value);
                 break;
             case INTERNAL_SERVER_ERROR:
-                msgDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown");
+                displayMessageDetails = BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown");
                 break;
         }
-        addMessage(fs, msg, msgDetails);
-        if (sendMailToAdmin)
-            mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail()
-                    , state.value, "persistentId: " + persistentId + "\nVersion: " + datasetVersionFriendlyNumber );
+        addMessage(fs, displayMessage, displayMessageDetails);
+        if (sendMailToAdmin) {
+            mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail(), emailSubject, emailMessage);
+        }
+    }
+
+    public String getDataverseVersionNoteText(String persistentId, String datasetVersionFriendlyNumber) {
+        Dataset dataset = datasetService.findByGlobalId(persistentId);
+        DatasetVersion dv = datasetVersionService.findByFriendlyVersionNumber(dataset.getId(), datasetVersionFriendlyNumber);
+        return dv.getDarNote();
     }
 
     public void updateDataverseVersionState(String persistentId, String datasetVersionFriendlyNumber, String state) {
         Dataset dataset = datasetService.findByGlobalId(persistentId);
         DatasetVersion dv = datasetVersionService.findByFriendlyVersionNumber(dataset.getId(), datasetVersionFriendlyNumber);
         dv.setArchiveTime(new Date());
-        dv.setArchiveNote(state);
+        dv.setDarNote(state);
         datasetVersionService.update(dv);
-        logger.finest("Update '" + persistentId + "' v: " + datasetVersionFriendlyNumber + " to state: " + state);
     }
 
     private void updateDatasetVersionToArchived(String persistentId, String datasetVersionFriendlyNumber, JsonObject jsonObjectArchived) {
@@ -234,15 +246,20 @@ public class DataverseBridge implements java.io.Serializable {
                 pid +
                 "#" + simpleDateFormat.format(new Date());
         logger.info(archiveNoteState);
-        updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, archiveNoteState);
-        String msg = BundleUtil.getStringFromBundle("dataset.archive.notification.email.archiving.finish.text", Collections.singletonList(pid));
-        mailServiceBean.sendSystemEmail(userMail, BundleUtil.getStringFromBundle("dataset.archive.notification.email.archiving.finish.subject"), msg);
-        logger.info("Mail is send to: " + userMail);
+        String currentArchiveNote = getDataverseVersionNoteText(persistentId, datasetVersionFriendlyNumber);
+        if (currentArchiveNote != null && !currentArchiveNote.contains(pid)) {
+            updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, archiveNoteState);
+            String msg = BundleUtil.getStringFromBundle("dataset.archive.notification.email.archiving.finish.text", Arrays.asList(persistentId, pid));
+            mailServiceBean.sendSystemEmail(userMail, BundleUtil.getStringFromBundle("dataset.archive.notification.email.archiving.finish.subject"), msg);
+            logger.info("Mail is send to: " + userMail);
+        } else {
+            logger.info("Archive note is already updated, with text: " + archiveNoteState);
+        }
     }
 
     private JsonObject retrieveGETResponseAsJsonObject(String path) {
         //see https://stackoverflow.com/questions/21574478/what-is-the-difference-between-closeablehttpclient-and-httpclient-in-apache-http
-        try(CloseableHttpClient httpclient = HttpClients.createDefault()){
+        try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
             HttpGet httpGet = new HttpGet(path);
             httpGet.addHeader("accept", "application/json");
             CloseableHttpResponse response = httpclient.execute(httpGet);
@@ -261,11 +278,11 @@ public class DataverseBridge implements java.io.Serializable {
         } catch (IOException e) {
             logger.severe("Error is occurred for HttpGet of " + path + ". Error message: " + e.getMessage());
             if (e.getMessage().contains("Connection refused")) {
-                JsonObject responseJsonObject = reportBridgeDown(e);
+                JsonObject responseJsonObject = reportBridgeDown(e); //send email to dataverseAdmin
                 return responseJsonObject;
-            }
-            mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail()
-                    , "IOException", path + "\nIOException, msg: " + e.getMessage());
+            } else
+                mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail()
+                        , "IOException", path + "\nIOException, msg: " + e.getMessage());
         }
         JsonReader jsonReader = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.INTERNAL_SERVER_ERROR.value)));
         JsonObject responseJsonObject = jsonReader.readObject();
@@ -276,7 +293,7 @@ public class DataverseBridge implements java.io.Serializable {
     private JsonObject reportBridgeDown(IOException e) {
         String systemEmail = settingsService.getValueForKey(SettingsServiceBean.Key.SystemEmail);
         InternetAddress systemAddress = MailUtil.parseSystemAddress(systemEmail);
-        mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail(), "FATAL ERROR ", e.getMessage());
+        mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail(), "ERROR - BRIDGE is DOWN! ", e.getMessage());
         JsonReader jsonReader = Json.createReader(new StringReader(RESPONSE_STATE.replace("value", StateEnum.BRIDGE_DOWN.value)));
         JsonObject responseJsonObject = jsonReader.readObject();
         jsonReader.close();
@@ -290,44 +307,150 @@ public class DataverseBridge implements java.io.Serializable {
             FacesContext.getCurrentInstance().addMessage(null, message);
     }
 
-    private DvBridgeConf getDvBridgeConf(String dvBridgeSetting) {
+    /*
+   Setting table.
+   Name: :DataverseBridgeConf
+   Content:
+   {
+    "source-name": "dataverse",
+    "metadata-url": "http://ddvn.dans.knaw.nl:8080/api/datasets/export?exporter=dataverse_json&persistentId=",
+    "bridge": {
+        "url": "http://10.0.2.2:8592/api/v1",
+        "api-key": "@km1D3cember2oo4"
+    },
+    "dar": [{
+        "dar-name": "EASY",
+        "users": [
+            {
+                "group-name": "SWORD",
+                "dar-user-name": "user001",
+                "dar-user-password": "user001",
+                "dar-user-affiliation": "UVT"
+            },
+            {
+                "group-name": "SWORD-Tilburg",
+                "dar-user-name": "user002",
+                "dar-user-password": "user002",
+                "dar-user-affiliation": "TUE"
+            }
+        ]
+    }]
+}
+  * */
+    private DataverseBridgeSetting getDvBridgeConf(String dvBridgeSetting) {
         JsonReader jsonReader = Json.createReader(new StringReader(dvBridgeSetting));
         JsonObject dvBridgeSettingJsonObject = jsonReader.readObject();
         jsonReader.close();
-        DvBridgeConf dvBridgeConf = new DvBridgeConf(dvBridgeSettingJsonObject.getString("dataverse-bridge-url")
-                , dvBridgeSettingJsonObject.getString("user-group")
-                , dvBridgeSettingJsonObject.getJsonArray("conf").stream().map(JsonObject.class::cast)
-                .collect(Collectors.toMap(
-                        k -> k.getJsonString("darName").getString(),
-                        v -> v.getString("dvBaseMetadataXml"))));
-        return dvBridgeConf;
+        return new DataverseBridgeSetting(dvBridgeSettingJsonObject);
     }
 
-    public DvBridgeConf getDvBridgeConf() {
-        return dvBridgeConf;
+    public DataverseBridgeSetting getDataverseBridgeSetting() {
+        return dataverseBridgeSetting;
     }
 
-    static class DvBridgeConf {
-        private String dataverseBridgeUrl;
-        private String userGroup;
-        private Map<String, String> conf;
+    public class DataverseBridgeSetting {
+        private String sourceName;
+        private String metadataUrl;
+        private DvnBrgSettingBridge dvnBrgSettingBridge;
+        private List<DarSetting> darSettings;
+        private List<String> darNames;
 
-        public DvBridgeConf(String dataverseBridgeUrl, String userGroup, Map<String, String> conf) {
-            this.dataverseBridgeUrl = dataverseBridgeUrl;
-            this.userGroup = userGroup;
-            this.conf = conf;
+        DataverseBridgeSetting(JsonObject jo) {
+            this.sourceName = jo.getString("source-name");
+            this.metadataUrl = jo.getString("metadata-url");
+            this.dvnBrgSettingBridge = new DvnBrgSettingBridge(jo.getJsonObject("bridge"));
+            JsonArray ja = jo.getJsonArray("dar");
+            darSettings = ja.stream().map(json -> new DarSetting(((JsonObject) json).getString("dar-name"),
+                    ((JsonArray) ((JsonObject) json).getJsonArray("users")).stream()
+                            .map(js -> new DarUser(((JsonObject) js).getString("group-name"), ((JsonObject) js).getString("dar-user-name"), ((JsonObject) js).getString("dar-user-password"), ((JsonObject) js).getString("dar-user-affiliation")))
+                            .collect(Collectors.toList())))
+                    .collect(Collectors.toList());
+            darNames = darSettings.stream().map(j -> j.darName).collect(Collectors.toList());
         }
 
-        public String getDataverseBridgeUrl() {
-            return dataverseBridgeUrl;
+        public String getMetadataUrl() {
+            return metadataUrl;
         }
 
-        public String getUserGroup() {
-            return userGroup;
+        public DvnBrgSettingBridge getDvnBrgSettingBridge() {
+            return dvnBrgSettingBridge;
         }
 
-        public Map<String, String> getConf() {
-            return conf;
+        public String getSourceName() {
+            return sourceName;
+        }
+
+        public List<DarSetting> getDarSettings() {
+            return darSettings;
+        }
+
+        public List<String> getDarNames() {
+            return darNames;
+        }
+    }
+
+    class DvnBrgSettingBridge {
+        private String url;
+        private String apiKey;
+
+        DvnBrgSettingBridge(JsonObject jo) {
+            this.url = jo.getString("url");
+            this.apiKey = jo.getString("api-key");
+        }
+    }
+
+    class DarSetting {
+        private String darName;
+        private List<DarUser> darUsers;
+        private List<String> userGroups;
+
+        public DarSetting(String darName, List<DarUser> darUsers) {
+            this.darName = darName;
+            this.darUsers = darUsers;
+            userGroups = darUsers.stream().map(x -> x.getGroupName()).collect(Collectors.toList());
+        }
+
+        public String getDarName() {
+            return darName;
+        }
+
+        public List<DarUser> getDarUsers() {
+            return darUsers;
+        }
+
+        public List<String> getUserGroups() {
+            return userGroups;
+        }
+    }
+
+    class DarUser {
+        private String groupName;
+        private String darUsername;
+        private String darPassword;
+        private String darUsernameAffiliation;
+
+        DarUser(String groupName, String darUsername, String darPassword, String darUsernameAffiliation) {
+            this.groupName = groupName;
+            this.darUsername = darUsername;
+            this.darPassword = darPassword;
+            this.darUsernameAffiliation = darUsernameAffiliation;
+        }
+
+        public String getGroupName() {
+            return groupName;
+        }
+
+        public String getDarUsername() {
+            return darUsername;
+        }
+
+        public String getDarPassword() {
+            return darPassword;
+        }
+
+        public String getDarUsernameAffiliation() {
+            return darUsernameAffiliation;
         }
     }
 }
+
