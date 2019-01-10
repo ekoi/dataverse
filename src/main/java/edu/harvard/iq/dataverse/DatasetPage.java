@@ -1559,7 +1559,7 @@ public class DatasetPage implements java.io.Serializable {
             DataverseBridge.DataverseBridgeSetting dataverseBridgeSetting = dbd.getDataverseBridgeSetting();
             List<DataverseBridge.DarSetting> darSettingList = dataverseBridgeSetting.getDarSettings();
             if (darSettingList.isEmpty()) {
-                logger.info("Disable the archive buttong.");
+                logger.info("Disable the archive button.");
                 swordGroupAlias = null;
             } else if (darSettingList.size() == 1) {
                 DataverseBridge.DarSetting darSetting = darSettingList.get(0);
@@ -1581,7 +1581,9 @@ public class DatasetPage implements java.io.Serializable {
             if (dataverseBridgeEnabled) {
                 for (DatasetVersion dv:dvs) {
                     String darNote = dv.getDarNote();
-                    if (darNote != null && (darNote.equals("INVALID") || darNote.equals("FAILED") || darNote.equals("REJECTED"))){
+                    if (darNote != null && (darNote.equals(DataverseBridge.StateEnum.INVALID.toString())
+                            || darNote.equals(DataverseBridge.StateEnum.FAILED.toString())
+                            || darNote.equals(DataverseBridge.StateEnum.REJECTED.toString()))){
                         dataverseBridgeEnabled = false;
                         break;
                     }

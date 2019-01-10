@@ -98,13 +98,13 @@ public class DataverseBridge implements java.io.Serializable {
 
     public JsonObject ingestToDar(String ingestData, boolean skipDarAuthPreCheck) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(dataverseBridgeSetting.dvnBrgSettingBridge.url + "/archiving");
+            HttpPost httpPost = new HttpPost(dataverseBridgeSetting.dvnSettingBridge.url + "/archiving");
             logger.finest("json that send to dataverse-bridge server (/archiving):  " + ingestData);
             StringEntity entity = new StringEntity(ingestData);
             httpPost.setEntity(entity);
             httpPost.setHeader("Accept", "application/json");
             httpPost.setHeader("Content-type", "application/json");
-            httpPost.setHeader("api_key", dataverseBridgeSetting.dvnBrgSettingBridge.apiKey);
+            httpPost.setHeader("api_key", dataverseBridgeSetting.dvnSettingBridge.apiKey);
             httpPost.setHeader("skipDarAuthPreCheck", Boolean.toString(skipDarAuthPreCheck));
             CloseableHttpResponse response = httpClient.execute(httpPost);
             switch (response.getStatusLine().getStatusCode()) {
@@ -147,7 +147,7 @@ public class DataverseBridge implements java.io.Serializable {
         JsonObject jsonObjectReponse;
         String path;
         try {
-            path = dataverseBridgeSetting.dvnBrgSettingBridge.url + "/archiving/state?srcMetadataUrl="
+            path = dataverseBridgeSetting.dvnSettingBridge.url + "/archiving/state?srcMetadataUrl="
                     + URLEncoder.encode(dvBaseMetadataXml + persistentId, StandardCharsets.UTF_8.toString())
                     + "&srcMetadataVersion=" + URLEncoder.encode(datasetVersionFriendlyNumber, StandardCharsets.UTF_8.toString()) + "&targetDarName=" + darName;
             jsonObjectReponse = retrieveGETResponseAsJsonObject(path);
@@ -227,8 +227,11 @@ public class DataverseBridge implements java.io.Serializable {
 
     public String getDataverseVersionNoteText(String persistentId, String datasetVersionFriendlyNumber) {
         Dataset dataset = datasetService.findByGlobalId(persistentId);
-        DatasetVersion dv = datasetVersionService.findByFriendlyVersionNumber(dataset.getId(), datasetVersionFriendlyNumber);
-        return dv.getDarNote();
+        if (dataset != null) {
+            DatasetVersion dv = datasetVersionService.findByFriendlyVersionNumber(dataset.getId(), datasetVersionFriendlyNumber);
+            return dv.getDarNote();
+        }
+        return null;
     }
 
     public void updateDataverseVersionState(String persistentId, String datasetVersionFriendlyNumber, String state) {
@@ -351,14 +354,14 @@ public class DataverseBridge implements java.io.Serializable {
     public class DataverseBridgeSetting {
         private String sourceName;
         private String metadataUrl;
-        private DvnBrgSettingBridge dvnBrgSettingBridge;
+        private DvnSettingBridge dvnSettingBridge;
         private List<DarSetting> darSettings;
         private List<String> darNames;
 
         DataverseBridgeSetting(JsonObject jo) {
             this.sourceName = jo.getString("source-name");
             this.metadataUrl = jo.getString("metadata-url");
-            this.dvnBrgSettingBridge = new DvnBrgSettingBridge(jo.getJsonObject("bridge"));
+            this.dvnSettingBridge = new DvnSettingBridge(jo.getJsonObject("bridge"));
             JsonArray ja = jo.getJsonArray("dar");
             darSettings = ja.stream().map(json -> new DarSetting(((JsonObject) json).getString("dar-name"),
                     ((JsonArray) ((JsonObject) json).getJsonArray("users")).stream()
@@ -372,8 +375,8 @@ public class DataverseBridge implements java.io.Serializable {
             return metadataUrl;
         }
 
-        public DvnBrgSettingBridge getDvnBrgSettingBridge() {
-            return dvnBrgSettingBridge;
+        public DvnSettingBridge getDvnSettingBridge() {
+            return dvnSettingBridge;
         }
 
         public String getSourceName() {
@@ -389,11 +392,11 @@ public class DataverseBridge implements java.io.Serializable {
         }
     }
 
-    class DvnBrgSettingBridge {
+    class DvnSettingBridge {
         private String url;
         private String apiKey;
 
-        DvnBrgSettingBridge(JsonObject jo) {
+        DvnSettingBridge(JsonObject jo) {
             this.url = jo.getString("url");
             this.apiKey = jo.getString("api-key");
         }
