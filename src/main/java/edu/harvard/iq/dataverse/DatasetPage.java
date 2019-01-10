@@ -1559,7 +1559,7 @@ public class DatasetPage implements java.io.Serializable {
             DataverseBridge.DataverseBridgeSetting dataverseBridgeSetting = dbd.getDataverseBridgeSetting();
             List<DataverseBridge.DarSetting> darSettingList = dataverseBridgeSetting.getDarSettings();
             if (darSettingList.isEmpty()) {
-                //todo: errror message
+                logger.info("Disable the archive buttong.");
                 swordGroupAlias = null;
             } else if (darSettingList.size() == 1) {
                 DataverseBridge.DarSetting darSetting = darSettingList.get(0);
