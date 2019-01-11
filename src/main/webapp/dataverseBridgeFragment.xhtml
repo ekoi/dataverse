@@ -9,6 +9,31 @@
         <p:ajax event="close" update=":datasetForm" />
         <p:fragment>
             <h:form class="form-horizontal"  autocomplete="off">
+                <div jsf:rendered="#{dataverseBridgeDialog.displayInputCredentials}">
+                    <h:outputText value="#{bundle['dataset.archive.dialog.label']}" escape="false"/>
+                    <h:panelGrid columns="3" cellpadding="5">
+
+                        <p:outputLabel for="selected-dar" value="#{bundle['dataset.archive.dialog.label.name']}"/>
+                        <h:selectOneMenu id="selected-dar"
+                                         value="#{dataverseBridgeDialog.darName}"
+                                         required="true" requiredMessage="#{bundle['dataset.archive.dialog.required.name']}">
+                            <f:selectItem itemLabel="Select Repository" itemValue="" noSelectionOption="true" required="true"/>
+                            <f:selectItems value="#{dataverseBridgeDialog.darNames}" />
+                        </h:selectOneMenu>
+
+                        <p:message for="selected-dar" styleClass="bg-danger text-danger"/>
+
+                        <p:outputLabel for="darUsername" value="#{bundle['dataset.archive.dialog.label.username']}"/>
+                        <p:inputText id="darUsername" value="#{dataverseBridgeDialog.darUsername}"
+                                     requiredMessage="#{bundle['dataset.archive.dialog.required.username']}" required="true"/>
+                        <h:message for="darUsername" styleClass="bg-danger text-danger"/>
+
+                        <p:outputLabel for="password" value="#{bundle['dataset.archive.dialog.label.password']}"/>
+                        <p:password id="password" value="#{dataverseBridgeDialog.darPassword}"
+                                    requiredMessage="#{bundle['dataset.archive.dialog.required.password']}" required="true"/>
+                        <h:message for="password" styleClass="bg-danger text-danger"/>
+                    </h:panelGrid>
+                </div>
                 <div jsf:rendered="#{!dataverseBridgeDialog.displayInputCredentials}">
                     <h:panelGrid columns="2" cellpadding="5">
                         <p:outputLabel for="selected-dar2" value="#{bundle['dataset.archive.dialog.label.name']}"/>
@@ -17,6 +42,7 @@
                         <p:inputText id="darUsername3" value="#{DatasetPage.darUsername}" readonly="true" style="background-color :#d1d1d1;"/>
                     </h:panelGrid>
                 </div>
+
 
                 <!-- send | cancel buttons -->
                 <div class="button-block">

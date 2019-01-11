@@ -63,6 +63,8 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     public void init() {
         if (session.getUser().isAuthenticated() && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
             dataverseBridge =  new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
+            dataverseBridgeSetting = dataverseBridge.getDataverseBridgeSetting();
+            darNameList= dataverseBridgeSetting.getDarNames();
         }
     }
 
