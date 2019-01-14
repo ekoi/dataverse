@@ -1544,7 +1544,7 @@ public class DatasetPage implements java.io.Serializable {
 
         List<DatasetVersion> dvs = dataset.getVersions();
         for (DatasetVersion dv:dvs) {
-            if (dv.getArchiveNote() != null) {
+            if (dv.getDarNote() != null) {
                 displayArchivedColumn = true;
                 break;
             }
