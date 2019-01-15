@@ -18,10 +18,8 @@ import javax.faces.view.ViewScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.json.JsonObject;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -52,18 +50,21 @@ public class DataverseBridgeDialog implements java.io.Serializable {
     private String datasetVersionFriendlyNumber;
     private String darUsername;
     private String darPassword;
-    private Map<String, String> dvDarConfs = new HashMap<>();
-    private String darName = "EASY";
-    private List<String> darNames;
+    private String darUserAffiliation;
+    private DataverseBridge.DataverseBridgeSetting dataverseBridgeSetting;
+    private String darName;
+    private List<String> darNameList;
     private String persistentId;
+    private String swordGroupAlias;
     private DataverseBridge dataverseBridge;
+    private boolean displayInputCredentials;
 
     @PostConstruct
     public void init() {
         if (session.getUser().isAuthenticated() && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
             dataverseBridge =  new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
-            dvDarConfs = dataverseBridge.getDvBridgeConf().getConf();
-            darNames = new ArrayList<>(dvDarConfs.keySet());
+            dataverseBridgeSetting = dataverseBridge.getDataverseBridgeSetting();
+            darNameList= dataverseBridgeSetting.getDarNames();
         }
     }
 
@@ -73,67 +74,54 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         AuthenticatedUser au = (AuthenticatedUser) session.getUser();
         logger.info(" The user '" + au.getIdentifier() + "' is trying to archive '" + persistentId + "' to '" + darName + "'.");
         DataverseBridge.StateEnum state;
-        String dvBaseMetadataXml = dvDarConfs.get(darName);
-        String jsonIngestData = composeJsonIngestData(dvBaseMetadataXml, darName);
-        if (jsonIngestData != null) {
-            JsonObject postResponseJsonObject = dataverseBridge.ingestToDar(jsonIngestData);
+        String dvBaseMetadataUrl = dataverseBridgeSetting.getMetadataUrl();
+        try {
+            JsonObject postResponseJsonObject = dataverseBridge.ingestToDar(composeJsonIngestData(dvBaseMetadataUrl, darName), !displayInputCredentials);
             state = DataverseBridge.StateEnum.fromValue(postResponseJsonObject.getString("state"));
-            if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
-                dataverseBridge.updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.toString() + "@" + darName);
-                Flowable.fromCallable(() -> {
-                    DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
-                    int hopCount = 0;
-                    while ((currentState == DataverseBridge.StateEnum.IN_PROGRESS) && hopCount < 10) {
-                        Thread.sleep(600000);//10 minutes
-                        hopCount += 1;
-                        logger.info(".... Checking Archiving Progress of " + persistentId + ".....[" + hopCount + "]");
-                        currentState = dataverseBridge.checkArchivingProgress(dvBaseMetadataXml, persistentId, datasetVersionFriendlyNumber, darName);
-                    }
-                    logger.info("Hop count: " + hopCount + "\t Current state of '" + persistentId + "': " + currentState);
-                    return currentState;
-                })
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(Schedulers.single())
-                        .doOnError(
-                                throwable -> {
-                                    String es = throwable.toString();
-                                    logger.severe(es);
-                                }
-                        )
-                        .subscribe(cs -> logger.info("The archiving process of dataset of '" + persistentId + "' with version: " + datasetVersionFriendlyNumber + " is done."),
-                                throwable -> logger.severe(throwable.getMessage()));
-
-                FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_INFO
-                        , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress")
-                        , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.detail"));
-                FacesContext.getCurrentInstance().addMessage(null, message);
-            } else {
-                logger.finest("persistentId: " + persistentId + "\tdatasetversion: " + datasetVersionFriendlyNumber + " has state: " + state);
-                dataverseBridge.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
-            }
-        } else {
-            logger.severe("Failed to compose ingest data.");
-            mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail()
-                    , "Failed to compose ingest data.", "persistentId: " + persistentId + "\nVersion: " + datasetVersionFriendlyNumber );
-            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR
-                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.transfer")
-                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.error.unknown"));
-            FacesContext.getCurrentInstance().addMessage(null, message);
+        } catch (IOException e) {
+            logger.severe(e.getMessage());
+            state = DataverseBridge.StateEnum.INTERNAL_SERVER_ERROR;
         }
+        if (state == DataverseBridge.StateEnum.IN_PROGRESS) {
+            dataverseBridge.updateDataverseVersionState(persistentId, datasetVersionFriendlyNumber, state.toString() + "@" + darName);
+            Flowable.fromCallable(() -> {
+                DataverseBridge.StateEnum currentState = DataverseBridge.StateEnum.IN_PROGRESS;
+                int hopCount = 0;
+                while ((currentState == DataverseBridge.StateEnum.IN_PROGRESS) && hopCount < 10) {
+                    Thread.sleep(900000);//15 minutes
+                    hopCount += 1;
+                    logger.info(".... Checking Archiving Progress of " + persistentId + ".....[" + hopCount + "]");
+                    currentState = dataverseBridge.checkArchivingProgress(dvBaseMetadataUrl, persistentId, datasetVersionFriendlyNumber, darName);
+                }
+                logger.info("Hop count: " + hopCount + "\t Current state of '" + persistentId + "': " + currentState);
+                return currentState;
+            })
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(Schedulers.single())
+                    .doOnError(
+                            throwable -> {
+                                String es = throwable.toString();
+                                logger.severe(es);
+                            }
+                    )
+                    .subscribe(cs -> logger.info("The dataset of '" + persistentId + "' has been archived."),
+                            throwable -> logger.severe(throwable.getMessage()));
+
+            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_INFO
+                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress")
+                    , BundleUtil.getStringFromBundle("dataset.archive.dialog.message.archiving.inprogress.detail"));
+            FacesContext.getCurrentInstance().addMessage(null, message);
+        } else {
+            dataverseBridge.updateArchivenoteAndDisplayMessage(persistentId, datasetVersionFriendlyNumber, state);
+        }
+
     }
 
-    private String composeJsonIngestData(String dvBaseMetadataXml, String darName){
-        SrcData srcData = new SrcData(dvBaseMetadataXml + persistentId, datasetVersionFriendlyNumber, getApiTokenKey());
-        DarData darData = new DarData(darName, darUsername, darPassword);
+    private String composeJsonIngestData(String dvBaseMetadataUrl, String darName) throws JsonProcessingException {
+        SrcData srcData = new SrcData(dvBaseMetadataUrl + persistentId, datasetVersionFriendlyNumber, getApiTokenKey(), dataverseBridgeSetting.getSourceName());
+        DarData darData= new DarData(darName, darUsername, darPassword, darUserAffiliation);
         ObjectMapper mapper = new ObjectMapper();
-        try {
-            return mapper.writeValueAsString(new IngestData(srcData, darData));
-        } catch (JsonProcessingException e) {
-            mailServiceBean.sendSystemEmail(authService.getAuthenticatedUser("dataverseAdmin").getEmail()
-                    , "JsonProcessingException", "dvBaseMetadataXml: " + dvBaseMetadataXml + "\ndarName: " + darName
-                            +"\nJsonProcessingException, msg: " + e.getMessage());
-        }
-        return null;
+        return mapper.writeValueAsString(new IngestData(srcData, darData));
     }
 
     private String getApiTokenKey() {
@@ -181,6 +169,17 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         this.darPassword = darPassword;
     }
 
+    public String getDarUserAffiliation() {
+        return darUserAffiliation;
+    }
+
+    public void setDarUserAffiliation(String darUserAffiliation) {
+        this.darUserAffiliation = darUserAffiliation;
+    }
+
+    public String getDatasetVersionFriendlyNumber() {
+        return datasetVersionFriendlyNumber;
+    }
 
     public void setDatasetVersionFriendlyNumber(String datasetVersionFriendlyNumber) {
         this.datasetVersionFriendlyNumber = datasetVersionFriendlyNumber;
@@ -194,9 +193,12 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         this.persistentId = persistentId;
     }
 
+    public String getSwordGroupAlias() {
+        return swordGroupAlias;
+    }
 
-    public void setDarNames(Map<String, String> dvDarConfs) {
-        this.dvDarConfs = dvDarConfs;
+    public void setSwordGroupAlias(String swordGroupAlias) {
+        this.swordGroupAlias = swordGroupAlias;
     }
 
     public String getDarName() {
@@ -207,55 +209,78 @@ public class DataverseBridgeDialog implements java.io.Serializable {
         this.darName = darName;
     }
 
-    public List<String> getDarNames() {
-        return darNames;
+    public List<String> getDarNameList() {
+        return darNameList;
     }
 
+    public void setDarNameList(List<String> darNameList) {
+        this.darNameList = darNameList;
+    }
 
+    public boolean isDisplayInputCredentials() {
+        return displayInputCredentials;
+    }
 
+    public void setDisplayInputCredentials(boolean displayInputCredentials) {
+        this.displayInputCredentials = displayInputCredentials;
+    }
     private class SrcData {
-        private String srcXml;
-        private String srcVersion;
-        private String apiToken;
+        private String srcMetadataUrl;
+        private String srcMetadataVersion;
+        private String srcName;
+        private String srcApiToken;
 
-        public SrcData(String srcXml, String srcVersion, String apiToken) {
-            this.srcXml = srcXml;
-            this.srcVersion = srcVersion;
-            this.apiToken = apiToken;
+        public SrcData(String srcMetadataUrl, String srcMetadataVersion, String apiToken, String srcName) {
+            this.srcMetadataUrl = srcMetadataUrl;
+            this.srcMetadataVersion = srcMetadataVersion;
+            this.srcApiToken = apiToken;
+            this.srcName = srcName;
         }
 
-        public String getSrcXml() {
-            return srcXml;
+        public String getSrcMetadataUrl() {
+            return srcMetadataUrl;
         }
 
-        public String getSrcVersion() {
-            return srcVersion;
+        public String getSrcMetadataVersion() {
+            return srcMetadataVersion;
         }
 
-        public String getApiToken() {
-            return apiToken;
+        public String getSrcApiToken() {
+            return srcApiToken;
         }
+
+        public String getSrcName() {
+            return srcName;
+        }
+
     }
     private class DarData {
-        private String username;
-        private String password;
         private String darName;
-        public DarData(String darName, String username, String password) {
+        private String darUsername;
+        private String darPassword;
+        private String darUserAffiliation;
+
+        public DarData(String darName, String darUsername, String darPassword, String darUserAffiliation) {
             this.darName = darName;
-            this.username = username;
-            this.password = password;
+            this.darUsername = darUsername;
+            this.darPassword = darPassword;
+            this.darUserAffiliation = darUserAffiliation;
         }
 
-        public String getUsername() {
-            return username;
+        public String getDarUsername() {
+            return darUsername;
         }
 
-        public String getPassword() {
-            return password;
+        public String getDarPassword() {
+            return darPassword;
         }
 
         public String getDarName() {
             return darName;
+        }
+
+        public String getDarUserAffiliation() {
+            return darUserAffiliation;
         }
     }
     private class IngestData{

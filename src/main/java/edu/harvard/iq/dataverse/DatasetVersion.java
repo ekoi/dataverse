@@ -142,7 +142,9 @@ public class DatasetVersion implements Serializable {
     
     @Column(length = ARCHIVE_NOTE_MAX_LENGTH)
     private String archiveNote;
-    
+
+    private String darNote;
+
     private String deaccessionLink;
 
     @Transient
@@ -262,6 +264,14 @@ public class DatasetVersion implements Serializable {
 
     public void setDeaccessionLink(String deaccessionLink) {
         this.deaccessionLink = deaccessionLink;
+    }
+
+    public String getDarNote() {
+        return darNote;
+    }
+
+    public void setDarNote(String darNote) {
+        this.darNote = darNote;
     }
 
     public GlobalId getDeaccessionLinkAsGlobalId() {
