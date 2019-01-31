@@ -1610,7 +1610,7 @@ function IdPSelectUI() {
         //if (preferredTile) {
             //buildTextDiv(idpEntryDiv, 'idpEntry.label');
         //} else {
-            buildTextDiv(idpEntryDiv, 'idpEntry.NoPreferred.label');
+            // buildTextDiv(idpEntryDiv, 'idpEntry.NoPreferred.label');
         //}
 
         var form = buildSelectForm();

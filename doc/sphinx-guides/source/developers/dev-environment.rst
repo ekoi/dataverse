@@ -2,173 +2,166 @@
 Development Environment
 =======================
 
-.. contents:: :local:
+These instructions are purposefully opinionated and terse to help you get your development environment up and running as quickly as possible! Please note that familiarity with running commands from the terminal is assumed.
 
-Assumptions
+.. contents:: |toctitle|
+	:local:
+
+Quick Start
 -----------
 
-This guide assumes you are using a Mac but we do have pages for :doc:`/developers/windows` and :doc:`/developers/ubuntu`.
+The quickest way to get Dataverse running is to use Vagrant as described in the :doc:`tools` section, but for day to day development work, we recommended the following setup.
 
-Requirements
-------------
+Set Up Dependencies
+-------------------
 
-Java
-~~~~
-
-Dataverse is developed on Java 8.
-
-The use of Oracle's version of Java is recommended, which can be downloaded from http://www.oracle.com/technetwork/java/javase/downloads/index.html
-
-The version of OpenJDK available from package managers from common Linux distributions such as Ubuntu and Fedora is probably sufficient for small changes as well as day to day development.
-
-Glassfish
-~~~~~~~~~
-
-As a `Java Enterprise Edition <http://en.wikipedia.org/wiki/Java_Platform,_Enterprise_Edition>`_ 7 (Java EE 7) application, Dataverse requires an applications server to run.
-
-Glassfish 4.1 is required (not 4.1.1 until https://github.com/IQSS/dataverse/issues/2628 is resolved), which can be downloaded from http://glassfish.java.net . If you have downloaded Glassfish as part of a Netbeans bundle, you can manually add the proper version by clicking "Tools", "Servers", "Add Server".
-
-PostgreSQL
-~~~~~~~~~~
-
-PostgreSQL 9.x is required and can be downloaded from http://postgresql.org
-
-Solr
-~~~~
-
-Dataverse depends on `Solr <http://lucene.apache.org/solr/>`_ for browsing and search.
-
-Solr 4.6.0 is the only version that has been tested extensively and is recommended in development. Download and configuration instructions can be found below. An upgrade to newer versions of Solr is being tracked at https://github.com/IQSS/dataverse/issues/456
-
-curl
-~~~~
-
-A command-line tool called ``curl`` ( http://curl.haxx.se ) is required by the setup scripts and it is useful to have curl installed when working on APIs.
-
-jq
-~~
-
-A command-line tool called ``jq`` ( http://stedolan.github.io/jq/ ) is required by the setup scripts.
-
-If you are already using ``brew``, ``apt-get``, or ``yum``, you can install ``jq`` that way. Otherwise, download the binary for your platform from http://stedolan.github.io/jq/ and make sure it is in your ``$PATH`` (``/usr/bin/jq`` is fine) and executable with ``sudo chmod +x /usr/bin/jq``.
-
-Recommendations
----------------
-
-Mac OS X
-~~~~~~~~
-
-The setup of a Dataverse development environment assumes the presence of a Unix shell (i.e. bash) so an operating system with Unix underpinnings such as Mac OS X or Linux is recommended. (The `development team at IQSS <http://datascience.iq.harvard.edu/team>`_ has standardized Mac OS X.) Windows users are encouraged to install `Cygwin <http://cygwin.com>`_.
-
-Netbeans
-~~~~~~~~
-
-While developers are welcome to use any editor or IDE they wish, Netbeans 8+ is recommended because it is free of cost, works cross platform, has good support for Java EE projects, and happens to be the IDE that the `development team at IQSS <http://datascience.iq.harvard.edu/team>`_ has standardized on. 
-
-NetBeans can be downloaded from http://netbeans.org. Please make sure that you use an option that contains the Jave EE features when choosing your download bundle. While using the installer you might be prompted about installing JUnit and Glassfish. There is no need to reinstall Glassfish, but it is recommended that you install JUnit.
-
-This guide will assume you are using Netbeans for development.
-
-Additional Tools
-~~~~~~~~~~~~~~~~
-
-Please see also the :doc:`/developers/tools` page, which lists additional tools that very useful but not essential.
-
-Setting up your dev environment
--------------------------------
-
-SSH keys
-~~~~~~~~
-
-You can use git with passwords over HTTPS, but it's much nicer to set up SSH keys. https://github.com/settings/ssh is the place to manage the ssh keys GitHub knows about for you. That page also links to a nice howto: https://help.github.com/articles/generating-ssh-keys
-
-From the terminal, ``ssh-keygen`` will create new ssh keys for you:
-
-- private key: ``~/.ssh/id_rsa`` - It is very important to protect your private key. If someone else acquires it, they can access private repositories on GitHub and make commits as you! Ideally, you'll store your ssh keys on an encrypted volume and protect your private key with a password when prompted for one by ``ssh-keygen``. See also "Why do passphrases matter" at https://help.github.com/articles/generating-ssh-keys
-
-- public key: ``~/.ssh/id_rsa.pub`` - After you've created your ssh keys, add the public key to your GitHub account.
-
-Clone Project from GitHub
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Before making commits, please read about our :doc:`/developers/branching-strategy` to make sure you commit to the right branch.
-
-Determine Which Repo To Push To
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Developers who are not part of the `development team at IQSS <http://datascience.iq.harvard.edu/team>`_ should first fork https://github.com/IQSS/dataverse per https://help.github.com/articles/fork-a-repo/
-
-Cloning the Project from Netbeans
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-From NetBeans, click "Team" then "Remote" then "Clone". Under "Repository URL", enter the `"ssh clone URL" <https://help.github.com/articles/which-remote-url-should-i-use/#cloning-with-ssh>`_ for your fork (if you do not have push access to the repo under IQSS) or ``git@github.com:IQSS/dataverse.git`` (if you do have push access to the repo under IQSS). See also https://netbeans.org/kb/docs/ide/git.html#github
-
-Cloning the Project from the Terminal
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If you prefer using git from the command line, you can clone the project from a terminal and later open the project in Netbeans.
-
-If you do not have push access to https://github.com/IQSS/dataverse clone your fork:
-
-``git clone git@github.com:[your GitHub user or organization]/dataverse.git``
-
-If you do have push access to https://github.com/IQSS/dataverse clone it:
-
-``git clone git@github.com:IQSS/dataverse.git``
-
-Installing and Running Solr
+Supported Operating Systems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A Dataverse-specific ``schema.xml`` configuration file (described below) is required.
+Mac OS X or Linux is required because the setup scripts assume the presence of standard Unix utilities.
 
-Download solr-4.6.0.tgz from http://archive.apache.org/dist/lucene/solr/4.6.0/solr-4.6.0.tgz to any directory you like but in the example below, we have downloaded the tarball to a directory called "solr" in our home directory. For now we are using the "example" template but we are replacing ``schema.xml`` with our own. We will also assume that the clone on the Dataverse repository was retrieved using NetBeans and that it is saved in the path ~/NetBeansProjects.
+Windows is not supported, unfortunately. For the current status of Windows support, see https://github.com/IQSS/dataverse/issues/3927 or our community list thread `"Do you want to develop on Windows?" <https://groups.google.com/d/msg/dataverse-community/Hs9j5rIxqPI/-q54751aAgAJ>`_
 
-- ``cd ~/solr``
-- ``tar xvfz solr-4.6.0.tgz``
-- ``cd solr-4.6.0/example``
-- ``cp ~/NetBeansProjects/dataverse/conf/solr/4.6.0/schema.xml solr/collection1/conf/schema.xml``
-- ``java -jar start.jar``
+Install Java
+~~~~~~~~~~~~
 
-Please note: If you prefer, once the proper ``schema.xml`` file is in place, you can simply double-click "start.jar" rather that running ``java -jar start.jar`` from the command line. Figuring out how to stop Solr after double-clicking it is an exercise for the reader.
+Dataverse requires Java 8.
 
-Once Solr is up and running you should be able to see a "Solr Admin" dashboard at http://localhost:8983/solr
+On Mac, we recommend Oracle's version of the JDK, which can be downloaded from http://www.oracle.com/technetwork/java/javase/downloads/index.html
 
-Once some dataverses, datasets, and files have been created and indexed, you can experiment with searches directly from Solr at http://localhost:8983/solr/#/collection1/query and look at the JSON output of searches, such as this wildcard search: http://localhost:8983/solr/collection1/select?q=*%3A*&wt=json&indent=true . You can also get JSON output of static fields Solr knows about: http://localhost:8983/solr/schema/fields
+On Linux, you are welcome to use the OpenJDK available from package managers.
 
-Run installer
-~~~~~~~~~~~~~
+Install Netbeans or Maven
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Once you install Glassfish and PostgreSQL, you need to configure the environment for the Dataverse app - configure the database connection, set some options, etc. We have a new installer script that should do it all for you. Again, assuming that the clone on the Dataverse repository was retrieved using NetBeans and that it is saved in the path ~/NetBeansProjects:
+NetBeans IDE (Java EE bundle) is recommended, and can be downloaded from http://netbeans.org . Developers may use any editor or IDE. We recommend NetBeans because it is free, works cross platform, has good support for Java EE projects, and includes a required build tool, Maven.
 
-``cd ~/NetBeansProjects/dataverse/scripts/installer``
+Below we describe how to build the Dataverse war file with Netbeans but if you prefer to use only Maven, you can find installation instructions in the :doc:`tools` section.
+
+Install Homebrew (Mac Only)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On Mac, install Homebrew to simplify the steps below: https://brew.sh
+
+Clone the Dataverse Git Repo
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Fork https://github.com/IQSS/dataverse and then clone your fork like this:
+
+``git clone git@github.com:[YOUR GITHUB USERNAME]/dataverse.git``
+
+Build the Dataverse War File
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Launch Netbeans and click "File" and then "Open Project". Navigate to where you put the Dataverse code and double-click "dataverse" to open the project. Click "Run" in the menu and then "Build Project (dataverse)". The first time you build the war file, it will take a few minutes while dependencies are downloaded from Maven Central. Feel free to move on to other steps but check back for "BUILD SUCCESS" at the end.
+
+If you installed Maven instead of Netbeans, run ``mvn package``.
+
+Install jq
+~~~~~~~~~~
+
+On Mac, run this command:
+
+``brew install jq``
+
+On Linux, install ``jq`` from your package manager or download a binary from http://stedolan.github.io/jq/
+
+Install Glassfish
+~~~~~~~~~~~~~~~~~
+
+Glassfish 4.1 is required.
+
+To install Glassfish, run the following commands:
+
+``cd /usr/local``
+
+``sudo curl -O http://download.oracle.com/glassfish/4.1/release/glassfish-4.1.zip``
+
+``sudo unzip glassfish-4.1.zip``
+
+``sudo chown -R $USER /usr/local/glassfish4``
+
+Install PostgreSQL
+~~~~~~~~~~~~~~~~~~
+
+PostgreSQL 9.4 or older is required because of the drivers we have checked into the code.
+
+On Mac, go to https://www.postgresql.org/download/macosx/ and choose "Interactive installer by EnterpriseDB" option. We've tested version 9.4.17. When prompted to set a password for the "database superuser (postgres)" just enter "password".
+
+After installation is complete, make a backup of the ``pg_hba.conf`` file like this:
+
+``sudo cp /Library/PostgreSQL/9.4/data/pg_hba.conf /Library/PostgreSQL/9.4/data/pg_hba.conf.orig``
+
+Then edit ``pg_hba.conf`` with an editor such as vi:
+
+``sudo vi /Library/PostgreSQL/9.4/data/pg_hba.conf``
+
+In the "METHOD" column, change all instances of "md5" to "trust".
+
+In the Finder, click "Applications" then "PostgreSQL 9.4" and launch the "Reload Configuration" app. Click "OK" after you see "server signaled".
+
+Next, launch the "pgAdmin III" application from the same folder. Under "Servers" double click "PostgreSQL 9.4 (localhost)". When you are prompted for a password, leave it blank and click "OK". If you have successfully edited "pg_hba.conf", you can get in without a password.
+
+On Linux, you should just install PostgreSQL from your package manager without worrying about the version as long as it's 9.x. Find ``pg_hba.conf`` and set the authentication method to "trust" and restart PostgreSQL.
+
+Install Solr
+~~~~~~~~~~~~
+
+`Solr <http://lucene.apache.org/solr/>`_ Solr 4.6.0 is required.
+
+To install Solr, execute the following commands:
+
+``sudo mkdir /usr/local/solr``
+
+``sudo chown $USER /usr/local/solr``
+
+``cd /usr/local/solr``
+
+``curl -O http://archive.apache.org/dist/lucene/solr/4.6.0/solr-4.6.0.tgz``
+
+``tar xvfz solr-4.6.0.tgz``
+
+A Dataverse-specific ``schema.xml`` configuration file is required, which we download from the "develop" branch on GitHub and use to overwrite the default ``schema.xml`` file:
+
+``cd solr-4.6.0/example``
+
+``curl -O https://raw.githubusercontent.com/IQSS/dataverse/develop/conf/solr/4.6.0/schema.xml``
+
+``mv schema.xml solr/collection1/conf/schema.xml``
+
+Assuming you are still in the ``solr-4.6.0/example`` directory, you can start Solr like this:
+
+``java -jar start.jar``
+
+Run the Dataverse Installer Script
+----------------------------------
+
+Navigate to the directory where you cloned the Dataverse git repo and run these commands:
+
+``cd scripts/installer``
 
 ``./install``
 
-The script will prompt you for some configuration values. It is recommended that you choose "localhost" for your hostname if this is a development environment. For everything else it should be safe to accept the defaults.
+It's fine to accept the default values.
 
-The script is a variation of the old installer from DVN 3.x that calls another script that runs ``asadmin`` commands. A serious advantage of this approach is that you should now be able to safely run the installer on an already configured system.
+After a while you will see ``Enter admin user name [Enter to accept default]>`` and you can just hit Enter.
 
-All the future changes to the configuration that are Glassfish-specific and can be done through ``asadmin`` should now go into ``scripts/install/glassfish-setup.sh``.
+Verify Dataverse is Running
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Shibboleth
+After the script has finished, you should be able to log into Dataverse with the following credentials:
+
+- http://localhost:8080
+- username: dataverseAdmin
+- password: admin
+
+Next Steps
 ----------
 
-If you are working on anything related to users, please keep in mind that your changes will likely affect Shibboleth users. Rather than setting up Shibboleth on your laptop, developers are advised to simply add a value to their database to enable Shibboleth "dev mode" like this:
+If you can log in to Dataverse, great! If not, please see the :doc:`troubleshooting` section. For further assitance, please see "Getting Help" in the :doc:`intro` section.
 
-``curl http://localhost:8080/api/admin/settings/:DebugShibAccountType -X PUT -d RANDOM``
+You're almost ready to start hacking on code. Now that the installer script has you up and running, you need to continue on to the :doc:`tips` section to get set up to deploy code from your IDE or the command line.
 
-For a list of possible values, please "find usages" on the settings key above and look at the enum.
+----
 
-Now when you go to http://localhost:8080/shib.xhtml you should be prompted to create a Shibboleth account.
-
-Rebuilding your dev environment
--------------------------------
-
-If you have an old copy of the database and old Solr data and want to start fresh, here are the recommended steps: 
-
-- drop your old database
-- clear out your existing Solr index: ``scripts/search/clear``
-- run the installer script above - it will create the db, deploy the app, populate the db with reference data and run all the scripts that create the domain metadata fields. You no longer need to perform these steps separately.
-- confirm you are using the latest Dataverse-specific Solr schema.xml per the "Installing and Running Solr" section of this guide
-- confirm http://localhost:8080 is up
-- If you want to set some dataset-specific facets, go to the root dataverse (or any dataverse; the selections can be inherited) and click "General Information" and make choices under "Select Facets". There is a ticket to automate this: https://github.com/IQSS/dataverse/issues/619
+Previous: :doc:`intro` | Next: :doc:`tips`
