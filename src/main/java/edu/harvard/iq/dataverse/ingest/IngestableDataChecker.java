@@ -28,9 +28,9 @@ import java.util.*;
 import java.lang.reflect.*;
 import java.util.regex.*;
 import java.util.zip.*;
-import java.util.logging.*;
+import java.util.logging.Logger;
 import org.apache.commons.lang.builder.*;
-import org.apache.poi.util.IOUtils;
+import org.apache.commons.io.IOUtils;
 
 /**
  * This is a virtually unchanged DVN v2-3 implementation by
@@ -55,6 +55,8 @@ public class IngestableDataChecker implements java.io.Serializable {
     // Map that returns a Stata Release number
     private static Map<Byte, String> stataReleaseNumber = new HashMap<Byte, String>();
     public static String STATA_13_HEADER = "<stata_dta><header><release>117</release>";
+    public static String STATA_14_HEADER = "<stata_dta><header><release>118</release>";
+    public static String STATA_15_HEADER = "<stata_dta><header><release>119</release>";
     // Map that returns a reader-implemented mime-type
     private static Set<String> readableFileTypes = new HashSet<String>();
     private static Map<String, Method> testMethods = new HashMap<String, Method>();
@@ -92,6 +94,8 @@ public class IngestableDataChecker implements java.io.Serializable {
         readableFileTypes.add("application/x-spss-por");
         readableFileTypes.add("application/x-rlang-transport");
         readableFileTypes.add("application/x-stata-13");
+        readableFileTypes.add("application/x-stata-14");
+        readableFileTypes.add("application/x-stata-15");
 
         Pattern p = Pattern.compile(regex);
         ptn = Pattern.compile(rdargx);
@@ -259,6 +263,44 @@ public class IngestableDataChecker implements java.io.Serializable {
                 result = "application/x-stata-13";
             }
 
+        }
+
+        if ((result == null) && (buff.capacity() >= STATA_14_HEADER.length())) {
+            // Let's see if it's a "new" STATA (v.14+) format:
+            buff.rewind();
+            byte[] headerBuffer = null;
+            String headerString = null;
+            try {
+                headerBuffer = new byte[STATA_14_HEADER.length()];
+                buff.get(headerBuffer, 0, STATA_14_HEADER.length());
+                headerString = new String(headerBuffer, "US-ASCII");
+            } catch (Exception ex) {
+                // probably a buffer underflow exception;
+                // we don't have to do anything... null will
+                // be returned, below.
+            }
+            if (STATA_14_HEADER.equals(headerString)) {
+                result = "application/x-stata-14";
+            }
+        }
+
+        if ((result == null) && (buff.capacity() >= STATA_15_HEADER.length())) {
+            // Let's see if it's a "new" STATA (v.14+) format:
+            buff.rewind();
+            byte[] headerBuffer = null;
+            String headerString = null;
+            try {
+                headerBuffer = new byte[STATA_15_HEADER.length()];
+                buff.get(headerBuffer, 0, STATA_15_HEADER.length());
+                headerString = new String(headerBuffer, "US-ASCII");
+            } catch (Exception ex) {
+                // probably a buffer underflow exception;
+                // we don't have to do anything... null will
+                // be returned, below.
+            }
+            if (STATA_15_HEADER.equals(headerString)) {
+                result = "application/x-stata-15";
+            }
         }
 
         return result;
@@ -528,17 +570,15 @@ public class IngestableDataChecker implements java.io.Serializable {
                 byte[] hdr = new byte[gzip_buffer_size];
                 buff.get(hdr, 0, gzip_buffer_size);
 
-                try (GZIPInputStream gzin = new GZIPInputStream(new ByteArrayInputStream(hdr));) {
-
+                try (GZIPInputStream gzin = new GZIPInputStream(new ByteArrayInputStream(hdr))) {
                     StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < RDA_HEADER_SIZE; i++) {
                         sb.append(String.format("%02X", gzin.read()));
                     }
                     String fisrt5bytes = sb.toString();
-
                     result = this.checkUncompressedFirst5bytes(fisrt5bytes);
                 }
-                // end of compressed case
+            // end of compressed case
             } else {
                 // uncompressed case?
                 if (DEBUG) {
@@ -569,12 +609,14 @@ public class IngestableDataChecker implements java.io.Serializable {
         boolean DEBUG = false;
         String readableFormatType = null;
         FileChannel srcChannel = null;
+        FileInputStream inp = null;
         try {
             int buffer_size = this.getBufferSize(fh);
             dbgLog.fine("buffer_size: " + buffer_size);
 
             // set-up a FileChannel instance for a given file object
-            srcChannel = new FileInputStream(fh).getChannel();
+            inp = new FileInputStream(fh);
+            srcChannel = inp.getChannel();
 
             // create a read-only MappedByteBuffer
             MappedByteBuffer buff = srcChannel.map(FileChannel.MapMode.READ_ONLY, 0, buffer_size);
@@ -639,6 +681,7 @@ public class IngestableDataChecker implements java.io.Serializable {
             ie.printStackTrace();
         } finally {
             IOUtils.closeQuietly(srcChannel);
+            IOUtils.closeQuietly(inp);
         }
         return readableFormatType;
     }
