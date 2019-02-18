@@ -125,8 +125,8 @@ import org.glassfish.jersey.media.multipart.FormDataParam;
 public class Datasets extends AbstractApiBean {
 
     private static final Logger logger = Logger.getLogger(Datasets.class.getCanonicalName());
-
-    @Inject DataverseSession session;
+    
+    @Inject DataverseSession session;    
 
     @EJB
     DatasetServiceBean datasetService;
@@ -160,7 +160,7 @@ public class Datasets extends AbstractApiBean {
 
     @EJB
     EjbDataverseEngine commandEngine;
-
+    
     @EJB
     IndexServiceBean indexService;
 
@@ -282,7 +282,7 @@ public class Datasets extends AbstractApiBean {
     @GET
     @Path("{id}/versions")
     public Response listVersions( @PathParam("id") String id ) {
-        return allowCors(response( req ->
+        return allowCors(response( req -> 
              ok( execCommand( new ListVersionsCommand(req, findDatasetOrDie(id)) )
                                 .stream()
                                 .map( d -> json(d) )
@@ -293,7 +293,7 @@ public class Datasets extends AbstractApiBean {
     @Path("{id}/versions/{versionId}")
     public Response getVersion( @PathParam("id") String datasetId, @PathParam("versionId") String versionId) {
         return allowCors(response( req -> {
-            DatasetVersion dsv = getDatasetVersionOrDie(req, versionId, findDatasetOrDie(datasetId));
+            DatasetVersion dsv = getDatasetVersionOrDie(req, versionId, findDatasetOrDie(datasetId));            
             return (dsv == null || dsv.getId() == null) ? notFound("Dataset version not found")
                                                         : ok(json(dsv));
         }));
@@ -899,7 +899,7 @@ public class Datasets extends AbstractApiBean {
     @GET
     @Path("{identifier}/assignments")
     public Response getAssignments(@PathParam("identifier") String id) {
-        return response( req ->
+        return response( req -> 
             ok( execCommand(
                        new ListRoleAssignments(req, findDatasetOrDie(id)))
                      .stream().map(ra->json(ra)).collect(toJsonArray())) );
@@ -910,7 +910,7 @@ public class Datasets extends AbstractApiBean {
     public Response getPrivateUrlData(@PathParam("id") String idSupplied) {
         return response( req -> {
             PrivateUrl privateUrl = execCommand(new GetPrivateUrlCommand(req, findDatasetOrDie(idSupplied)));
-            return (privateUrl != null) ? ok(json(privateUrl))
+            return (privateUrl != null) ? ok(json(privateUrl)) 
                                         : error(Response.Status.NOT_FOUND, "Private URL not found.");
         });
     }
@@ -918,51 +918,10 @@ public class Datasets extends AbstractApiBean {
     @POST
     @Path("{id}/privateUrl")
     public Response createPrivateUrl(@PathParam("id") String idSupplied) {
-        return response( req ->
+        return response( req -> 
                 ok(json(execCommand(
                         new CreatePrivateUrlCommand(req, findDatasetOrDie(idSupplied))))));
     }
-
-    @POST
-    @Path("{id}/moveTo/{newDataverseAlias}")
-    public Response updateDatasetOwner(@PathParam("id") String idSupplied, @PathParam("newDataverseAlias") String newDataverseAliasSupplied) {
-        try {
-            User u = findUserOrDie();
-            if (!u.isSuperuser()) {
-                return error(Response.Status.FORBIDDEN, "Not a superuser");
-            }
-            final Dataset dataset = findDatasetOrDie(idSupplied);
-
-            final Dataverse dataverse = dataverseService.findByAlias(newDataverseAliasSupplied);
-            if (dataverse == null)
-                return error( Response.Status.NOT_FOUND, "Dataverse alias '" + newDataverseAliasSupplied + "' not found" );
-
-            dataset.setOwner(dataverse);
-            final Dataset newDataset = datasetService.merge(dataset);
-            final Dataverse newDataverseOwner = newDataset.getOwner();
-            final JsonObjectBuilder jsonbuilder = json(newDataset);
-
-            return allowCors(ok(jsonbuilder.add("newDataverseOwner", (newDataverseOwner != null) ? json(newDataverseOwner) : null)));
-        } catch (WrappedResponse wr) {
-            return wr.getResponse();
-        }
-    }
-
-    @GET
-    @Path("{id}/owner")
-    public Response updateDatasetOwner(@PathParam("id") long idSupplied) {
-        final Dataset dataset = datasetService.find(idSupplied);
-        if (dataset == null)
-            return error( Response.Status.NOT_FOUND, "Dataset id '" + idSupplied + "' not found" );
-
-        final Dataverse dataverse = dataset.getOwner();
-        final JsonObjectBuilder jsonbuilder = json(dataset);
-
-        return allowCors(ok(jsonbuilder.add("DatasetOwner", (dataverse != null) ? json(dataverse) : null)));
-
-    }
-
-
 
     @DELETE
     @Path("{id}/privateUrl")
@@ -1260,13 +1219,13 @@ public class Datasets extends AbstractApiBean {
 
     /**
      * Add a File to an existing Dataset
-     *
+     * 
      * @param idSupplied
      * @param jsonData
      * @param fileInputStream
      * @param contentDispositionHeader
      * @param formDataBodyPart
-     * @return
+     * @return 
      */
     @POST
     @Path("{id}/add")
@@ -1294,19 +1253,19 @@ public class Datasets extends AbstractApiBean {
                     );
         }
         
-
+        
         // -------------------------------------
         // (2) Get the Dataset Id
-        //
+        //  
         // -------------------------------------
         Dataset dataset;
-
+        
         try {
             dataset = findDatasetOrDie(idSupplied);
         } catch (WrappedResponse wr) {
-            return wr.getResponse();
+            return wr.getResponse();           
         }
-
+        
         //------------------------------------
         // (2a) Make sure dataset does not have package file
         //
@@ -1326,8 +1285,8 @@ public class Datasets extends AbstractApiBean {
         // -------------------------------------
         String newFilename = contentDispositionHeader.getFileName();
         String newFileContentType = formDataBodyPart.getMediaType().toString();
-
-
+      
+        
         // (2a) Load up optional params via JSON
         //---------------------------------------
         OptionalFileParams optionalFileParams = null;
@@ -1336,10 +1295,10 @@ public class Datasets extends AbstractApiBean {
         try {
             optionalFileParams = new OptionalFileParams(jsonData);
         } catch (DataFileTagException ex) {
-            return error( Response.Status.BAD_REQUEST, ex.getMessage());
+            return error( Response.Status.BAD_REQUEST, ex.getMessage());            
         }
 
-
+        
         //-------------------
         // (3) Create the AddReplaceFileHelper object
         //-------------------
@@ -1387,11 +1346,11 @@ public class Datasets extends AbstractApiBean {
 
             }
         }
-
+            
     } // end: addFileToDataset
 
 
-
+    
     private void msg(String m){
         //System.out.println(m);
         logger.fine(m);
@@ -1402,8 +1361,8 @@ public class Datasets extends AbstractApiBean {
     private void msgt(String m){
         dashes(); msg(m); dashes();
     }
-
-
+    
+    
     private <T> T handleVersion( String versionId, DsVersionHandler<T> hdl )
         throws WrappedResponse {
         switch (versionId) {
@@ -1426,7 +1385,7 @@ public class Datasets extends AbstractApiBean {
                 }
         }
     }
-
+    
     private DatasetVersion getDatasetVersionOrDie( final DataverseRequest req, String versionNumber, final Dataset ds ) throws WrappedResponse {
         DatasetVersion dsv = execCommand( handleVersion(versionNumber, new DsVersionHandler<Command<DatasetVersion>>(){
 
@@ -1439,7 +1398,7 @@ public class Datasets extends AbstractApiBean {
                 public Command<DatasetVersion> handleDraft() {
                     return new GetDraftDatasetVersionCommand(req, ds);
                 }
-
+  
                 @Override
                 public Command<DatasetVersion> handleSpecific(long major, long minor) {
                     return new GetSpecificPublishedDatasetVersionCommand(req, ds, major, minor);
@@ -1455,7 +1414,7 @@ public class Datasets extends AbstractApiBean {
         }
         return dsv;
     }
-
+    
     @GET
     @Path("{identifier}/locks")
     public Response getLocks(@PathParam("identifier") String id, @QueryParam("type") DatasetLock.Reason lockType) {

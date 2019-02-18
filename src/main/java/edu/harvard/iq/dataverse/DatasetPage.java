@@ -207,7 +207,7 @@ public class DatasetPage implements java.io.Serializable {
     @Inject
     ThumbnailServiceWrapper thumbnailServiceWrapper;
     @Inject
-    SettingsWrapper settingsWrapper;
+    SettingsWrapper settingsWrapper; 
     @Inject 
     ProvPopupFragmentBean provPopupFragmentBean;
 
@@ -1202,7 +1202,7 @@ public class DatasetPage implements java.io.Serializable {
             Format:  {  DatasetFieldType.id : DatasetField }
          --------------------------------------------------------- */
         // Initialize Map
-        Map<Long, DatasetField> mapDatasetFields = new HashMap<>();
+        Map<Long, DatasetField> mapDatasetFields = new HashMap<>();   
 
         // Populate Map
          for (DatasetField dsf : workingVersion.getFlatDatasetFields()) {
@@ -1560,8 +1560,7 @@ public class DatasetPage implements java.io.Serializable {
         try {
             privateUrl = commandEngine.submit(new GetPrivateUrlCommand(dvRequestService.getDataverseRequest(), dataset));
             if (privateUrl != null) {
-                JH.addMessage(FacesMessage.SEVERITY_INFO, BundleUtil.getStringFromBundle("dataset.privateurl.infoMessageAuthor", Arrays
-                    .asList(getPrivateUrlLink(privateUrl))));
+                JH.addMessage(FacesMessage.SEVERITY_INFO, BundleUtil.getStringFromBundle("dataset.privateurl.infoMessageAuthor", Arrays.asList(getPrivateUrlLink(privateUrl))));
             }
         } catch (CommandException ex) {
             // No big deal. The user simply doesn't have access to create or delete a Private URL.
@@ -1781,7 +1780,7 @@ public class DatasetPage implements java.io.Serializable {
                                 if (subField.getDatasetFieldType().getName().equals(DatasetFieldConstant.authorIdValue)) {
                                     subField.getDatasetFieldValues().get(0).setValue(creatorOrcidId);
                                 }
-                                if (subField.getDatasetFieldType().getName().equals(DatasetFieldConstant.authorIdType)) {
+                                if (subField.getDatasetFieldType().getName().equals(DatasetFieldConstant.authorIdType)) {  
                                    DatasetFieldType authorIdTypeDatasetField = fieldService.findByName(DatasetFieldConstant.authorIdType);
                                    subField.setSingleControlledVocabularyValue(fieldService.findControlledVocabularyValueByDatasetFieldTypeAndStrValue(authorIdTypeDatasetField, "ORCID", true));
                                 }                                
@@ -2071,7 +2070,7 @@ public class DatasetPage implements java.io.Serializable {
                     new PublishDatasetCommand(dataset, dvRequestService.getDataverseRequest(), minor)
                 );
                 dataset = result.getDataset();
-                // Sucessfully executing PublishDatasetCommand does not guarantee that the dataset
+                // Sucessfully executing PublishDatasetCommand does not guarantee that the dataset 
                 // has been published. If a publishing workflow is configured, this may have sent the 
                 // dataset into a workflow limbo, potentially waiting for a third party system to complete 
                 // the process. So it may be premature to show the "success" message at this point. 
@@ -2714,7 +2713,7 @@ public class DatasetPage implements java.io.Serializable {
             if (editMode == EditMode.CREATE) {                
                 if ( selectedTemplate != null ) {
                     if ( isSessionUserAuthenticated() ) {
-                        cmd = new CreateNewDatasetCommand(dataset, dvRequestService.getDataverseRequest(), false, selectedTemplate);
+                        cmd = new CreateNewDatasetCommand(dataset, dvRequestService.getDataverseRequest(), false, selectedTemplate); 
                     } else {
                         JH.addMessage(FacesMessage.SEVERITY_FATAL, BundleUtil.getStringFromBundle("dataset.create.authenticatedUsersOnly"));
                         return null;
@@ -2965,7 +2964,7 @@ public class DatasetPage implements java.io.Serializable {
     
     public boolean isDatasetLockedInWorkflow() {
         return (dataset != null) 
-                ? dataset.isLockedFor(DatasetLock.Reason.Workflow)
+                ? dataset.isLockedFor(DatasetLock.Reason.Workflow) 
                 : false;
     }
     
@@ -3464,7 +3463,7 @@ public class DatasetPage implements java.io.Serializable {
      * Items for the "Designated this image as the Dataset thumbnail: 
      */
     
-    private FileMetadata fileMetadataSelectedForThumbnailPopup = null;
+    private FileMetadata fileMetadataSelectedForThumbnailPopup = null; 
 
     public void  setFileMetadataSelectedForThumbnailPopup(FileMetadata fm){
        fileMetadataSelectedForThumbnailPopup = fm; 
@@ -3538,7 +3537,7 @@ public class DatasetPage implements java.io.Serializable {
      * Items for the "Tags (Categories)" popup.
      *
      */
-    private FileMetadata fileMetadataSelectedForTagsPopup = null;
+    private FileMetadata fileMetadataSelectedForTagsPopup = null; 
     
     public void  setFileMetadataSelectedForTagsPopup(){
 
@@ -3849,7 +3848,7 @@ public class DatasetPage implements java.io.Serializable {
      * Items for the "Advanced (Ingest) Options" popup. 
      * 
      */
-    private FileMetadata fileMetadataSelectedForIngestOptionsPopup = null;
+    private FileMetadata fileMetadataSelectedForIngestOptionsPopup = null; 
 
     public void  setFileMetadataSelectedForIngestOptionsPopup(FileMetadata fm){
        fileMetadataSelectedForIngestOptionsPopup = fm; 

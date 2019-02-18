@@ -6,8 +6,6 @@ michael-local
 GPATH
 GTAGS
 GRTAGS
-.idea
-*.iml
 # OS generated files #
 ######################
 .DS_Store
@@ -32,7 +30,7 @@ scripts/installer/dvinstall/
 oauth-credentials.md
 
 /src/main/webapp/oauth2/newAccount.html
-#scripts/api/setup-all.sh*
+scripts/api/setup-all.sh*
 
 # ctags generated tag file
 tags

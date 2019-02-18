@@ -119,7 +119,7 @@ public class LoginPage implements java.io.Serializable {
         authProvider = authSvc.getAuthenticationProvider(systemConfig.getDefaultAuthProvider());
         random = new Random();
     }
-    
+
     public List<AuthenticationProviderDisplayInfo> listCredentialsAuthenticationProviders() {
         List<AuthenticationProviderDisplayInfo> infos = new LinkedList<>();
         for ( String id : authSvc.getAuthenticationProviderIdsOfType( CredentialsAuthenticationProvider.class ) ) {

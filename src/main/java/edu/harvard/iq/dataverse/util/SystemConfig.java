@@ -24,8 +24,6 @@ import java.util.logging.Logger;
 import javax.ejb.EJB;
 import javax.ejb.Stateless;
 import javax.inject.Named;
-
-import org.apache.commons.io.IOUtils;
 import org.passay.CharacterRule;
 import org.apache.commons.io.IOUtils;
 
