@@ -264,9 +264,6 @@ public class MetricsDans extends AbstractApiBean {
         if (listOfObjectArrays.isEmpty())
             return job;
 
-        long tempOwnerId=1;
-        JsonArrayBuilder childrenArray = Json.createArrayBuilder();
-        JsonObjectBuilder jobChild = Json.createObjectBuilder();
         List<Node> nodes = new ArrayList<>();
         for(Object[] objs:listOfObjectArrays) {
             int id = (int)objs[0];
@@ -274,16 +271,10 @@ public class MetricsDans extends AbstractApiBean {
             String alias = (String)objs[2];
             String name = (String)objs[3];
             long ownerId = (long)objs[4];
-            nodes.add(new Node(alias, String.valueOf(id), String.valueOf(ownerId)));
+            nodes.add(new Node(alias, id, (int) (long)ownerId, depth, name));
         }
-        String str = createTree(nodes);
-        System.out.println("str=========: " + str);
-        JsonReader reader = Json.createReader(new StringReader(str));
-
-        JsonArray ja = reader.readArray();
-
-        reader.close();
-        return job.add("children", ja);
+        JsonObjectBuilder str = createTree(nodes);
+        return job.add("children", str);
     }
     private JsonArrayBuilder dataversesAllYearsToJson(List<Object[]> listOfObjectArrays){
         JsonArrayBuilder jab = Json.createArrayBuilder();
@@ -496,9 +487,9 @@ public class MetricsDans extends AbstractApiBean {
         return jab;
     }
 
-    private static String createTree(List<Node> nodes) {
+    private static JsonObjectBuilder createTree(List<Node> nodes) {
 
-        Map<String, Node> mapTmp = new HashMap<>();
+        Map<Integer, Node> mapTmp = new HashMap<>();
 
         //Save all nodes to a map
         for (Node current : nodes) {
@@ -507,9 +498,9 @@ public class MetricsDans extends AbstractApiBean {
 
         //loop and assign parent/child relationships
         for (Node current : nodes) {
-            String parentId = current.getParentId();
+            int parentId = current.getParentId();
 
-            if (parentId != null) {
+            if (parentId != 0) {
                 Node parent = mapTmp.get(parentId);
                 if (parent != null) {
                     current.setParent(parent);
@@ -531,13 +522,15 @@ public class MetricsDans extends AbstractApiBean {
             }
         }
 
-        return root.toString();
+        return root.toBuild();
     }
 
     class Node {
 
-        private String id;
-        private String parentId;
+        private int id;
+        private int parentId;
+        private int depth;
+        private String name;
 
         private String alias;
         private Node parent;
@@ -549,11 +542,13 @@ public class MetricsDans extends AbstractApiBean {
             this.children = new ArrayList<>();
         }
 
-        public Node(String alias, String childId, String parentId) {
+        public Node(String alias, int childId, int parentId, int depth, String name) {
             this.alias = alias;
             this.id = childId;
             this.parentId = parentId;
             this.children = new ArrayList<>();
+            this.depth = depth;
+            this.name = name;
         }
 
         public String getAlias() {
@@ -564,19 +559,19 @@ public class MetricsDans extends AbstractApiBean {
             this.alias = alias;
         }
 
-        public String getId() {
+        public int getId() {
             return id;
         }
 
-        public void setId(String id) {
+        public void setId(int id) {
             this.id = id;
         }
 
-        public String getParentId() {
+        public int getParentId() {
             return parentId;
         }
 
-        public void setParentId(String parentId) {
+        public void setParentId(int parentId) {
             this.parentId = parentId;
         }
 
@@ -601,7 +596,24 @@ public class MetricsDans extends AbstractApiBean {
                 this.children.add(child);
         }
 
-        public JsonObjectBuilder toString2() {
+        public int getDepth() {
+            return depth;
+        }
+
+        public void setDepth(int depth) {
+            this.depth = depth;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
             JsonObjectBuilder jobPublished = Json.createObjectBuilder();
             jobPublished.add("id", id);
             jobPublished.add("parentId", parentId);
@@ -609,6 +621,22 @@ public class MetricsDans extends AbstractApiBean {
             JsonArrayBuilder jab = Json.createArrayBuilder();
             for (Node n:children) {
                 jab.add(n.toString());
+            }
+            jobPublished.add("children", jab);
+
+            return jobPublished.build().toString();
+        }
+
+        public JsonObjectBuilder toBuild() {
+            JsonObjectBuilder jobPublished = Json.createObjectBuilder();
+            jobPublished.add("id", id);
+            jobPublished.add("parentId", parentId);
+            jobPublished.add("alias", alias);
+            jobPublished.add("depth", depth);
+            jobPublished.add("name", name);
+            JsonArrayBuilder jab = Json.createArrayBuilder();
+            for (Node n:children) {
+                jab.add(n.toBuild());
             }
             jobPublished.add("children", jab);
 

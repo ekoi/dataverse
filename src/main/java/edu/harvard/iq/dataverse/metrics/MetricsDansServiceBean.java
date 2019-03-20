@@ -34,7 +34,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
         return em.createNativeQuery(sql).getResultList();
     }
 
-    public List<Integer> getRecursiveChildrenIds(String dvAlias, String dtype, DatasetVersion.VersionState versionState) {
+    public List<Integer> getChildrenIdsRecursively(String dvAlias, String dtype, DatasetVersion.VersionState versionState) {
         dvAlias = dvAlias.replaceAll("\\+", "_");//this is for tilburg_nondsa since the generateMetricName method of edu.harvard.iq.dataverse.Metric
         //prohibit the "_" character. The "_" is character reserved for seperator.
         //In the client side, the tilburg_nondsa will convert to tilburg-nondsa
@@ -60,6 +60,76 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             }
         }
         logger.info("query - getChildrenIdsRecursivelly: " + sql);
+        return em.createNativeQuery(sql).getResultList();
+    }
+
+    public List<Object[]> getDataversesChildrenRecursively(String dvAlias) {
+        dvAlias = dvAlias.replaceAll("\\+", "_");//this is for tilburg_nondsa since the generateMetricName method of edu.harvard.iq.dataverse.Metric
+        //prohibit the "_" character. The "_" is character reserved for seperator.
+        //In the client side, the tilburg_nondsa will convert to tilburg-nondsa
+        dvAlias = dvAlias.replaceAll(",", "','");
+        String sql =  "WITH RECURSIVE querytree AS (\n"
+                + "     SELECT id, dtype, owner_id, publicationdate, 0 as depth\n"
+                + "     FROM dvobject\n"
+                + "     WHERE id in (select id from dataverse where alias in ('" + dvAlias + "'))\n"
+                + "     UNION ALL\n"
+                + "     SELECT e.id, e.dtype, e.owner_id, e.publicationdate, depth+ 1\n"
+                + "     FROM dvobject e\n"
+                + "     INNER JOIN querytree qtree ON qtree.id = e.owner_id\n"
+                + ")\n"
+                + "SELECT qt.id, depth, dv.alias, dv.name, coalesce(qt.owner_id,0) as ownerId\n"
+                + "FROM querytree qt, dataverse dv\n"
+                + "where dtype='Dataverse'\n"
+                + "and qt.id=dv.id\n"
+                + "order by depth asc, ownerId asc;";
+
+        logger.info("query - getDataversesChildrenRecursively: " + sql);
+        return em.createNativeQuery(sql).getResultList();
+    }
+
+
+    public List<String> getDataversesNameByIds(List<Integer> ids) {
+        String allIds = ids.stream().map( n -> n.toString() ).collect(Collectors.joining(","));
+        logger.info("allIds: " + allIds);
+        if (allIds.isEmpty())
+            return Collections.emptyList();
+        String sql = "select name\n"
+                + "from dataverse\n"
+                + "where id in (" + allIds + ")\n";
+        logger.info("query - getDataversesNameByIds: " + sql);
+        return em.createNativeQuery(sql).getResultList();
+    }
+
+    public List<String> getDataversesNameByStringDate(String strDate) {
+        String sql = "select dv.name\n"
+                    + "from dataverse dv, dvobject dvo\n"
+                    + "where dvo.id = dv.id and dvo.dtype='Dataverse'\n"
+                    + "and date_trunc('year', dvo.createdate)='" + strDate + "'";
+        logger.info("query - getDataversesNameByIds: " + sql);
+        return em.createNativeQuery(sql).getResultList();
+    }
+
+    public List<Object[]> getDatasetsIdentifierByIds(List<Integer> ids) {
+        String allIds = ids.stream().map( n -> n.toString() ).collect(Collectors.joining(","));
+        logger.info("allIds: " + allIds);
+        if (allIds.isEmpty())
+            return Collections.emptyList();
+        String sql = "select (dvo1.authority || '/' || dvo1.identifier) as pid, count(dvo2.owner_id) as num, sum(df.filesize)\n"
+                + "from dvobject dvo1\n"
+                + "FULL OUTER JOIN dvobject dvo2 on dvo2.owner_id=dvo1.id\n"
+                + "FULL OUTER JOIN datafile df on df.id=dvo2.id\n"
+                + "where dvo1.id in (" + allIds + ")\n"
+                + "group by pid order by num;";
+            logger.info("query - getDataversesNameByIds: " + sql);
+        return em.createNativeQuery(sql).getResultList();
+    }
+
+    public List<String> getDatasetsPIDByStringDate(String strDate) {
+        String sql = "select (dvo.authority || '/' || dvo.identifier) as pid\n"
+                + "from dataset ds, dvobject dvo\n"
+                + "where dvo.id = ds.id and dvo.dtype='Dataset'\n"
+                + "and date_trunc('quarter', dvo.createdate)='" + strDate + "'";
+        logger.info("query - getDatasetsPIDByStringDate: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -136,27 +206,28 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
         String ids = convertListIdsToStringCommasparateIds(dvAlias, "Dataset");
         if (ids.equals(""))
             return Collections.emptyList();
-        String sql = "select date_trunc('quarter', createdate)::date as create_date, count(createdate)\n"
-                + "from dvobject\n"
-                + "where owner_id in (" + ids + ")\n"
+        String sql = "select date_trunc('quarter', dvo.createdate)::date as create_date, count(dvo.createdate), sum(df.filesize)\n"
+                + "from dvobject dvo, datafile df\n"
+                + "where dvo.id=df.id and dvo.owner_id in (" + ids + ")\n"
                 + "group by create_date order by create_date;";
-        logger.info("query: " + sql);
+        logger.info("query - filesAllTime: " + sql);
         Query query = em.createNativeQuery(sql);
         return query.getResultList();
     }
 
     //TODO: save as cache
     private String convertListIdsToStringCommasparateIds(String dvAlias, String dtype) {
-        String[] dvIds = Arrays.stream(getRecursiveChildrenIds(dvAlias, dtype, null).stream().mapToInt(i->i).toArray())
+        String[] dvIds = Arrays.stream(getChildrenIdsRecursively(dvAlias, dtype, null).stream().mapToInt(i->i).toArray())
                 .mapToObj(String::valueOf).toArray(String[]::new);
         return String.join(",", dvIds);
     }
 
     /** Downloads */
     public List<Object[]> downloadsAllTime(String commasparateDvAlias) throws Exception {
-        String sql = "select date_trunc('quarter', responsetime)::date as response_time, count(responsetime)\n"
-                + "from guestbookresponse\n"
-                + "where responsetime is not null\n";
+        String sql = "select date_trunc('quarter', gb.responsetime)::date as response_time, count(gb.responsetime), sum(df.filesize)\n"
+                + "from guestbookresponse gb, datafile df\n"
+                + "where responsetime is not null\n"
+                + "and gb.datafile_id=df.id\n";
         if (!commasparateDvAlias.equals("root")) {
             List<Integer> datasetIds = getListOfDatasetsByStatusAndByDvAlias(commasparateDvAlias, null);
             if (datasetIds.isEmpty())
@@ -165,7 +236,25 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             sql+= "and dataset_id in (" + commasparateDatasetIds + ")\n";
         }
         sql += "group by response_time order by response_time;";
-        logger.info("query: " + sql);
+        logger.info("query - downloadsAllTime: " + sql);
+        return  em.createNativeQuery(sql).getResultList();
+    }
+
+    public List<Object[]> downloadsAllTime2(String commasparateDvAlias) throws Exception {
+        String sql = "select date_trunc('quarter', gb.responsetime)::date as response_time, count(gb.responsetime), sum(df.filesize), (dvo.authority || '/' || dvo.identifier) as pid\n"
+                + "from guestbookresponse gb\n"
+                + "join datafile df on df.id=gb.datafile_id\n"
+                + "join dvobject dvo on dvo.id=gb.dataset_id\n"
+                + "where gb.responsetime is not null\n";
+        if (!commasparateDvAlias.equals("root")) {
+            List<Integer> datasetIds = getListOfDatasetsByStatusAndByDvAlias(commasparateDvAlias, null);
+            if (datasetIds.isEmpty())
+                return Collections.emptyList();
+            String commasparateDatasetIds = datasetIds.stream().map( n -> n.toString() ).collect(Collectors.joining(","));
+            sql+= "and dataset_id in (" + commasparateDatasetIds + ")\n";
+        }
+        sql += "group by response_time, pid order by response_time;";
+        logger.info("query - downloadsAllTime: " + sql);
         return  em.createNativeQuery(sql).getResultList();
     }
 }
