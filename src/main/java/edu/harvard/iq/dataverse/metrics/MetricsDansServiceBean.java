@@ -22,7 +22,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
     public List<Integer> getListOfDatasetsByStatusAndByDvAlias(String commasparateDvAlias, DatasetVersion.VersionState versionState) {
         String sql = "select dvo.id from dvobject dvo, datasetversion dsv\n"
                    + "where dvo.id=dsv.dataset_id and dvo.identifier is not null\n"
-                   + "and dvo.authority='10411' \n";
+                   + "and dvo.dtype='Dataset' \n";
         if (versionState != null)
             sql += "and dsv.versionstate = '" + versionState.name() + "'\n";
         if (!commasparateDvAlias.equals("root")) {
@@ -88,24 +88,28 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
     }
 
 
-    public List<String> getDataversesNameByIds(List<Integer> ids) {
+    public List<Object[]> getDataversesNameByIds(List<Integer> ids) {
         String allIds = ids.stream().map( n -> n.toString() ).collect(Collectors.joining(","));
         logger.info("allIds: " + allIds);
         if (allIds.isEmpty())
             return Collections.emptyList();
-        String sql = "select name\n"
+        String sql = "select name, alias, dataversetype\n"
                 + "from dataverse\n"
-                + "where id in (" + allIds + ")\n";
+                + "where id in (" + allIds + ") order by name\n";
         logger.info("query - getDataversesNameByIds: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
-    public List<String> getDataversesNameByStringDate(String strDate) {
-        String sql = "select dv.name\n"
+    public List<Object[]> getDataversesNameByStringDate(String strDate, String dvAlias) {
+        String sql = "select dv.name, dv.alias, dataversetype\n"
                     + "from dataverse dv, dvobject dvo\n"
                     + "where dvo.id = dv.id and dvo.dtype='Dataverse'\n"
                     + "and date_trunc('year', dvo.createdate)='" + strDate + "'";
-        logger.info("query - getDataversesNameByIds: " + sql);
+        String ids = convertListIdsToStringCommasparateIds(dvAlias, "Dataverse");
+        if (ids.equals(""))
+            return Collections.emptyList();
+            sql += "and dvo.id in (" + ids + ");\n";
+        logger.info("query - getDataversesNameByStringDate: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -120,7 +124,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "FULL OUTER JOIN datafile df on df.id=dvo2.id\n"
                 + "where dvo1.id in (" + allIds + ")\n"
                 + "group by pid order by num;";
-            logger.info("query - getDataversesNameByIds: " + sql);
+            logger.info("query - getDatasetsIdentifierByIds: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
