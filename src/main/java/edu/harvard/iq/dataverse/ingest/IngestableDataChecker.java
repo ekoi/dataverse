@@ -28,22 +28,22 @@ import java.util.*;
 import java.lang.reflect.*;
 import java.util.regex.*;
 import java.util.zip.*;
-import java.util.logging.*;
+import java.util.logging.Logger;
 import org.apache.commons.lang.builder.*;
-import org.apache.poi.util.IOUtils;
+import org.apache.commons.io.IOUtils;
 
 /**
- * This is a virtually unchanged DVN v2-3 implementation by
+ * This is a virtually unchanged DVN v2-3 implementation by 
  * @author Akio Sone
  *
- * incorporated into 4.0 by
+ * incorporated into 4.0 by 
  * @author Leonid Andreev
- *
+ * 
  */
 public class IngestableDataChecker implements java.io.Serializable {
 
     /**
-     *
+     * 
      */
 
     // static fields
@@ -55,6 +55,8 @@ public class IngestableDataChecker implements java.io.Serializable {
     // Map that returns a Stata Release number
     private static Map<Byte, String> stataReleaseNumber = new HashMap<Byte, String>();
     public static String STATA_13_HEADER = "<stata_dta><header><release>117</release>";
+    public static String STATA_14_HEADER = "<stata_dta><header><release>118</release>";
+    public static String STATA_15_HEADER = "<stata_dta><header><release>119</release>";
     // Map that returns a reader-implemented mime-type
     private static Set<String> readableFileTypes = new HashSet<String>();
     private static Map<String, Method> testMethods = new HashMap<String, Method>();
@@ -80,11 +82,11 @@ public class IngestableDataChecker implements java.io.Serializable {
         stataReleaseNumber.put((byte) 111, "rel_7scnd");
         stataReleaseNumber.put((byte) 113, "rel_8_or_9");
         stataReleaseNumber.put((byte) 114, "rel_10");
-        stataReleaseNumber.put((byte) 115, "rel_12");
-        // 116 was an in-house experimental version that was never
+        stataReleaseNumber.put((byte) 115, "rel_12"); 
+        // 116 was an in-house experimental version that was never 
         // released.
         // STATA v.13 introduced a new format, 117. It's a completely
-        // new development, unrelated to the old format.
+        // new development, unrelated to the old format. 
         stataReleaseNumber.put((byte) 117, "rel_13");
 
         readableFileTypes.add("application/x-stata");
@@ -92,6 +94,8 @@ public class IngestableDataChecker implements java.io.Serializable {
         readableFileTypes.add("application/x-spss-por");
         readableFileTypes.add("application/x-rlang-transport");
         readableFileTypes.add("application/x-stata-13");
+        readableFileTypes.add("application/x-stata-14");
+        readableFileTypes.add("application/x-stata-15");
 
         Pattern p = Pattern.compile(regex);
         ptn = Pattern.compile(rdargx);
@@ -149,14 +153,14 @@ public class IngestableDataChecker implements java.io.Serializable {
         buff.rewind();
         boolean DEBUG = false;
 
-
+        
         // -----------------------------------------
         // Avoid java.nio.BufferUnderflowException
         // -----------------------------------------
         if (buff.capacity() < 4){
             return null;
         }
-
+        
         if (DEBUG) {
             out.println("applying the sav test\n");
         }
@@ -178,11 +182,11 @@ public class IngestableDataChecker implements java.io.Serializable {
                 out.println("this file is NOT spss-sav type");
             }
         }
-
+        
         return result;
     }
 
-
+    
     /**
      * test this byte buffer against STATA DTA spec
      *
@@ -199,16 +203,16 @@ public class IngestableDataChecker implements java.io.Serializable {
         // -----------------------------------------
         // Avoid java.nio.BufferUnderflowException
         // -----------------------------------------
-        if (buff.capacity() < 4) {
+        if (buff.capacity() < 4) {            
             return result;
         }
-
-        // We first check if it's a "classic", old DTA format
-        // (up to version 115):
-
+        
+        // We first check if it's a "classic", old DTA format 
+        // (up to version 115): 
+        
         byte[] hdr4 = new byte[4];
         buff.get(hdr4, 0, 4);
-
+        
         if (DEBUG) {
             for (int i = 0; i < hdr4.length; ++i) {
                 dbgLog.info(String.format("%d\t%02X\n", i, hdr4[i]));
@@ -239,26 +243,64 @@ public class IngestableDataChecker implements java.io.Serializable {
             }
             result = "application/x-stata";
         }
-
+        
         if ((result == null)&&(buff.capacity() >= STATA_13_HEADER.length())) {
-            // Let's see if it's a "new" STATA (v.13+) format:
+            // Let's see if it's a "new" STATA (v.13+) format: 
+            buff.rewind();
+            byte[] headerBuffer = null; 
+            String headerString = null; 
+            try {
+                headerBuffer = new byte[STATA_13_HEADER.length()];
+                buff.get(headerBuffer, 0, STATA_13_HEADER.length());
+                headerString = new String(headerBuffer, "US-ASCII");
+            } catch (Exception ex) {
+                // probably a buffer underflow exception; 
+                // we don't have to do anything... null will 
+                // be returned, below. 
+            }
+            
+            if (STATA_13_HEADER.equals(headerString)) {
+                result = "application/x-stata-13";
+            }
+            
+        }
+
+        if ((result == null) && (buff.capacity() >= STATA_14_HEADER.length())) {
+            // Let's see if it's a "new" STATA (v.14+) format:
             buff.rewind();
             byte[] headerBuffer = null;
             String headerString = null;
             try {
-                headerBuffer = new byte[STATA_13_HEADER.length()];
-                buff.get(headerBuffer, 0, STATA_13_HEADER.length());
+                headerBuffer = new byte[STATA_14_HEADER.length()];
+                buff.get(headerBuffer, 0, STATA_14_HEADER.length());
                 headerString = new String(headerBuffer, "US-ASCII");
             } catch (Exception ex) {
                 // probably a buffer underflow exception;
                 // we don't have to do anything... null will
                 // be returned, below.
             }
-
-            if (STATA_13_HEADER.equals(headerString)) {
-                result = "application/x-stata-13";
+            if (STATA_14_HEADER.equals(headerString)) {
+                result = "application/x-stata-14";
             }
+        }
 
+        if ((result == null) && (buff.capacity() >= STATA_15_HEADER.length())) {
+            // Let's see if it's a "new" STATA (v.14+) format:
+            buff.rewind();
+            byte[] headerBuffer = null;
+            String headerString = null;
+            try {
+                headerBuffer = new byte[STATA_15_HEADER.length()];
+                buff.get(headerBuffer, 0, STATA_15_HEADER.length());
+                headerString = new String(headerBuffer, "US-ASCII");
+            } catch (Exception ex) {
+                // probably a buffer underflow exception;
+                // we don't have to do anything... null will
+                // be returned, below.
+            }
+            if (STATA_15_HEADER.equals(headerString)) {
+                result = "application/x-stata-15";
+            }
         }
 
         return result;
@@ -326,8 +368,8 @@ public class IngestableDataChecker implements java.io.Serializable {
         }
 
         // size test
-        int bufferCapacity = buff.capacity();
-        dbgLog.fine("Subsettable Checker: buffer capacity: "+bufferCapacity);
+	int bufferCapacity = buff.capacity();
+	dbgLog.fine("Subsettable Checker: buffer capacity: "+bufferCapacity);
 
         if (bufferCapacity < 491) {
             if (DEBUG) {
@@ -362,10 +404,10 @@ public class IngestableDataChecker implements java.io.Serializable {
             // 1-char case
             pos1 = baseBias + i;
 
-            if ( pos1 > bufferCapacity - 1 ) {
-                dbgLog.fine("Subsettable Checker: request to go beyond buffer capacity ("+pos1+")");
-                return result;
-            }
+	    if ( pos1 > bufferCapacity - 1 ) {
+		dbgLog.fine("Subsettable Checker: request to go beyond buffer capacity ("+pos1+")");
+		return result; 
+	    }
 
             buff.position(pos1);
             if (DEBUG) {
@@ -383,10 +425,10 @@ public class IngestableDataChecker implements java.io.Serializable {
             // 2-char case
             pos2 = baseBias + 2 * i;
 
-            if ( pos2 > bufferCapacity - 2 ) {
-                dbgLog.fine("Subsettable Checker: request to read 2 bytes beyond buffer capacity ("+pos2+")");
-                return result;
-            }
+	    if ( pos2 > bufferCapacity - 2 ) {
+		dbgLog.fine("Subsettable Checker: request to read 2 bytes beyond buffer capacity ("+pos2+")");
+		return result; 
+	    }
 
 
             buff.position(pos2);
@@ -399,10 +441,10 @@ public class IngestableDataChecker implements java.io.Serializable {
             // 3-char case
             pos3 = baseBias + 3 * i;
 
-            if ( pos3 > bufferCapacity - 3 ) {
-                dbgLog.fine("Subsettable Checker: request to read 3 bytes beyond buffer capacity ("+pos3+")");
-                return result;
-            }
+	    if ( pos3 > bufferCapacity - 3 ) {
+		dbgLog.fine("Subsettable Checker: request to read 3 bytes beyond buffer capacity ("+pos3+")");
+		return result; 
+	    }
 
 
             buff.position(pos3);
@@ -485,11 +527,11 @@ public class IngestableDataChecker implements java.io.Serializable {
     public String testRDAformat(MappedByteBuffer buff) {
         String result = null;
         buff.rewind();
-
+        
         if (buff.capacity() < 4){
             return null;
         }
-
+        
         boolean DEBUG = false;
         if (DEBUG) {
             out.println("applying the RData test\n");
@@ -504,7 +546,7 @@ public class IngestableDataChecker implements java.io.Serializable {
             out.println();
             buff.rewind();
         }
-        // get the first 4 bytes as an int and check its value;
+        // get the first 4 bytes as an int and check its value; 
         // if it is 0x1F8B0800, then gunzip and its first 4 bytes
         int magicNumber = buff.getInt();
 
@@ -528,17 +570,15 @@ public class IngestableDataChecker implements java.io.Serializable {
                 byte[] hdr = new byte[gzip_buffer_size];
                 buff.get(hdr, 0, gzip_buffer_size);
 
-                try (GZIPInputStream gzin = new GZIPInputStream(new ByteArrayInputStream(hdr));) {
-
+                try (GZIPInputStream gzin = new GZIPInputStream(new ByteArrayInputStream(hdr))) {
                     StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < RDA_HEADER_SIZE; i++) {
                         sb.append(String.format("%02X", gzin.read()));
                     }
                     String fisrt5bytes = sb.toString();
-
                     result = this.checkUncompressedFirst5bytes(fisrt5bytes);
                 }
-                // end of compressed case
+            // end of compressed case
             } else {
                 // uncompressed case?
                 if (DEBUG) {
@@ -556,7 +596,7 @@ public class IngestableDataChecker implements java.io.Serializable {
                 String fisrt5bytes = sb.toString();
 
                 result = this.checkUncompressedFirst5bytes(fisrt5bytes);
-                // end of uncompressed case
+            // end of uncompressed case
             }
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -569,12 +609,14 @@ public class IngestableDataChecker implements java.io.Serializable {
         boolean DEBUG = false;
         String readableFormatType = null;
         FileChannel srcChannel = null;
+        FileInputStream inp = null;
         try {
             int buffer_size = this.getBufferSize(fh);
             dbgLog.fine("buffer_size: " + buffer_size);
-
+        
             // set-up a FileChannel instance for a given file object
-            srcChannel = new FileInputStream(fh).getChannel();
+            inp = new FileInputStream(fh);
+            srcChannel = inp.getChannel();
 
             // create a read-only MappedByteBuffer
             MappedByteBuffer buff = srcChannel.map(FileChannel.MapMode.READ_ONLY, 0, buffer_size);
@@ -585,7 +627,7 @@ public class IngestableDataChecker implements java.io.Serializable {
             buff.rewind();
             dbgLog.fine("before the for loop");
             for (String fmt : this.getTestFormatSet()) {
-
+                
                 // get a test method
                 Method mthd = testMethods.get(fmt);
                 //dbgLog.info("mthd: " + mthd.getName());
@@ -639,6 +681,7 @@ public class IngestableDataChecker implements java.io.Serializable {
             ie.printStackTrace();
         } finally {
             IOUtils.closeQuietly(srcChannel);
+            IOUtils.closeQuietly(inp);
         }
         return readableFormatType;
     }
@@ -670,7 +713,7 @@ public class IngestableDataChecker implements java.io.Serializable {
     }
 
     /**
-     * adjust the size of the buffer according to the size of
+     * adjust the size of the buffer according to the size of 
      * the file if necessary; otherwise, use the default size
      */
     private int getBufferSize(File fh) {

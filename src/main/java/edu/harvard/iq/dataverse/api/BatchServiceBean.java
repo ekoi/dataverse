@@ -5,7 +5,6 @@ import edu.harvard.iq.dataverse.Dataverse;
 import edu.harvard.iq.dataverse.DataverseServiceBean;
 import edu.harvard.iq.dataverse.api.imports.ImportException;
 import edu.harvard.iq.dataverse.api.imports.ImportUtil;
-import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
 import edu.harvard.iq.dataverse.engine.command.DataverseRequest;
 import java.io.File;
 import java.io.FileWriter;
@@ -28,7 +27,7 @@ import javax.json.JsonObjectBuilder;
  */
 @Stateless
 public class BatchServiceBean {
-    private static final Logger logger = Logger.getLogger(BatchServiceBean.class.getCanonicalName());
+ private static final Logger logger = Logger.getLogger(BatchServiceBean.class.getCanonicalName());
 
     @EJB
     DataverseServiceBean dataverseService;
@@ -42,43 +41,40 @@ public class BatchServiceBean {
         PrintWriter validationLog = null;
         PrintWriter cleanupLog = null;
         try {
-            JsonArrayBuilder status = Json.createArrayBuilder();
-            Date timestamp = new Date();
+        JsonArrayBuilder status = Json.createArrayBuilder();
+        Date timestamp = new Date();
 
-            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH:mm:ss");
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH:mm:ss");
 
-            validationLog = new PrintWriter(new FileWriter( "../logs/validationLog"+  formatter.format(timestamp)+".txt"));
-            cleanupLog = new PrintWriter(new FileWriter( "../logs/cleanupLog"+  formatter.format(timestamp)+".txt"));
-            File dir = new File(fileDir);
-            if (dir.isDirectory()) {
-                for (File file : dir.listFiles()) {
-                    if (null != file) {
-                        if (!file.isHidden()) {
-                            if (file.isDirectory()) {
-                                try {
-                                    status.add(handleDirectory(dataverseRequest, file, importType, validationLog,
-                                        cleanupLog, createDV));
-                                } catch (ImportException e) {
-                                    logger.log(Level.SEVERE, "Exception in handleDirectory() for " + file.getName(), e);
-                                }
-                            } else {
-                                try {
-                                    status.add(importService.handleFile(dataverseRequest, owner, file, importType,
-                                        validationLog, cleanupLog));
-                                } catch (ImportException e) {
-                                    logger.log(Level.SEVERE, "Exception in handleFile() for " + file.getName(), e);
-                                }
-
-                            }
+        validationLog = new PrintWriter(new FileWriter( "../logs/validationLog"+  formatter.format(timestamp)+".txt"));
+        cleanupLog = new PrintWriter(new FileWriter( "../logs/cleanupLog"+  formatter.format(timestamp)+".txt"));
+        File dir = new File(fileDir);
+        if (dir.isDirectory()) {
+            for (File file : dir.listFiles()) {
+                if (!file.isHidden()) {
+                    if (file.isDirectory()) {
+                        try {
+                            status.add(handleDirectory(dataverseRequest, file, importType, validationLog, cleanupLog, createDV));
+                        } catch (ImportException e) {
+                            logger.log(Level.SEVERE, "Exception in handleDirectory() for "+ file.getName(),e);
                         }
+                    } else {
+                        try {
+                            status.add(importService.handleFile(dataverseRequest, owner, file, importType, validationLog, cleanupLog));
+                        } catch(ImportException e) {
+                             logger.log(Level.SEVERE, "Exception in handleFile() for "+ file.getName(),e);
+                        }
+
                     }
                 }
-            } else {
-                status.add(importService.handleFile(dataverseRequest, owner, dir, importType, validationLog, cleanupLog));
-
             }
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Exception in processFilePath()", e);
+        } else {
+            status.add(importService.handleFile(dataverseRequest, owner, dir, importType, validationLog, cleanupLog));
+
+        }
+        }
+        catch(Exception e) {
+                logger.log(Level.SEVERE, "Exception in processFilePath()", e);
         } finally {
             validationLog.close();
             cleanupLog.close();
@@ -99,16 +95,12 @@ public class BatchServiceBean {
             }
         }
         for (File file : dir.listFiles()) {
-            if (null != file) {
-                if (!file.isHidden()) {
-                    try {
-                        JsonObjectBuilder fileStatus = importService.handleFile(dataverseRequest, owner, file,
-                            importType, validationLog, cleanupLog);
-                        status.add(fileStatus);
-                    } catch (ImportException | IOException e) {
-                        status.add(Json.createObjectBuilder().add("importStatus",
-                            "Exception importing " + file.getName() + ", message = " + e.getMessage()));
-                    }
+            if (!file.isHidden()) {
+                try {
+                    JsonObjectBuilder fileStatus = importService.handleFile(dataverseRequest, owner, file, importType, validationLog, cleanupLog);
+                    status.add(fileStatus);
+                } catch (ImportException | IOException e) {
+                    status.add(Json.createObjectBuilder().add("importStatus", "Exception importing " + file.getName() + ", message = " + e.getMessage()));
                 }
             }
         }

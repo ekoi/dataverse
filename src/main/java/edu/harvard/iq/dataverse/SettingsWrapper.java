@@ -10,6 +10,7 @@ import edu.harvard.iq.dataverse.settings.Setting;
 import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
 import edu.harvard.iq.dataverse.settings.SettingsServiceBean.Key;
 import edu.harvard.iq.dataverse.util.MailUtil;
+import edu.harvard.iq.dataverse.util.StringUtil;
 import edu.harvard.iq.dataverse.util.SystemConfig;
 import java.util.HashMap;
 import java.util.Map;
@@ -104,7 +105,7 @@ public class SettingsWrapper implements java.io.Serializable {
         }
         
         String val = get(settingKey);;
-        return ( val==null ) ? safeDefaultIfKeyNotFound : settingService.TRUE_VALUES.contains(val.trim().toLowerCase() );
+        return ( val==null ) ? safeDefaultIfKeyNotFound : StringUtil.isTrue(val);
     }
 
     private void initSettingsMap() {
@@ -149,14 +150,50 @@ public class SettingsWrapper implements java.io.Serializable {
         return systemConfig.isRsyncDownload();
     }
     
+    public boolean isRsyncOnly() {
+        return systemConfig.isRsyncOnly();
+    }
+    
+    public boolean isHTTPUpload(){
+        return systemConfig.isHTTPUpload();
+    }
+    
+    public boolean isDataFilePIDSequentialDependent(){
+        return systemConfig.isDataFilePIDSequentialDependent();
+    }
+    
     public String getSupportTeamName() {
         String systemEmail = getValueForKey(SettingsServiceBean.Key.SystemEmail);
         InternetAddress systemAddress = MailUtil.parseSystemAddress(systemEmail);
         return BrandingUtil.getSupportTeamName(systemAddress, dataverseService.findRootDataverse().getName());
     }
+    
+    public String getSupportTeamEmail() {
+        String systemEmail = getValueForKey(SettingsServiceBean.Key.SystemEmail);
+        InternetAddress systemAddress = MailUtil.parseSystemAddress(systemEmail);        
+        return BrandingUtil.getSupportTeamEmailAddress(systemAddress) != null ? BrandingUtil.getSupportTeamEmailAddress(systemAddress) : BrandingUtil.getSupportTeamName(systemAddress, dataverseService.findRootDataverse().getName());
+    }
+    
+    public Integer getUploadMethodsCount() {
+        return systemConfig.getUploadMethodCount();
+    }
 
     public boolean isRootDataverseThemeDisabled() {
         return isTrueForKey(Key.DisableRootDataverseTheme, false);
+    }
+    
+    public String getDropBoxKey() {
+
+        String configuredDropBoxKey = System.getProperty("dataverse.dropbox.key");
+        if (configuredDropBoxKey != null) {
+            return configuredDropBoxKey;
+        }
+        return "";
+    }
+    
+    public Boolean isHasDropBoxKey() {
+
+        return !getDropBoxKey().isEmpty();
     }
 
 }

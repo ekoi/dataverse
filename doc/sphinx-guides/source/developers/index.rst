@@ -12,13 +12,17 @@ Developer Guide
 
    intro
    dev-environment
+   windows
    tips
    troubleshooting
    version-control
+   sql-upgrade-scripts
    testing
    documentation
+   dependencies
    debugging
    coding-style
+   deployment
    containers
    making-releases
    tools
