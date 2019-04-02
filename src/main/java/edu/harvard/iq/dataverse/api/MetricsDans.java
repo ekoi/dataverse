@@ -45,7 +45,7 @@ public class MetricsDans extends AbstractApiBean {
                 String pubDv = metricsSvc.getDataversesNameByIds(releasedDataverse).stream().map(n -> {String s = (String)n[0] + "#" + (String)n[1] + "#" + (String)n[2]; return s;} ).collect(Collectors.joining("|"));
                 List<Integer> draftDataverse = metricsSvc.getChildrenIdsRecursively(topLevelDvAlias, "Dataverse", DatasetVersion.VersionState.DRAFT);
                 String drafDv = metricsSvc.getDataversesNameByIds(draftDataverse).stream().map(n -> {String s = (String)n[0] + "#" + (String)n[1] + "#" + (String)n[2]; return s;} ).collect(Collectors.joining("|"));
-                JsonArrayBuilder jsonArrayBuilder = versionStateSizeToJson(releasedDataverse.size(), pubDv, draftDataverse.size(), drafDv, 0, "");
+                JsonArrayBuilder jsonArrayBuilder = versionStateSizeToJson(releasedDataverse.size(), pubDv, draftDataverse.size(), drafDv);
                 jsonArrayString = jsonArrayBuilder.build().toString();
                 metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
             }
@@ -108,11 +108,7 @@ public class MetricsDans extends AbstractApiBean {
                     String draftDs = metricsSvc.getDatasetsIdentifierByIds(draftDatasets).stream().map(n -> {Object[] objs = (Object[])n; String s= objs[0].toString() + "-"
                                                         + ((objs[1] != null) ? Long.toString((Long)objs[1]): "0") + "-" + (( objs[2] != null) ? (BigDecimal)objs[2]: "0"); return s;}
                                                     ).collect(Collectors.joining("|"));
-                    List<Integer> deacDatasets = metricsSvc.getListOfDatasetsByStatusAndByDvAlias(topLevelDvAlias, DatasetVersion.VersionState.DEACCESSIONED);
-                    String deacDs = metricsSvc.getDatasetsIdentifierByIds(deacDatasets).stream().map(n -> {Object[] objs = (Object[])n; String s= objs[0].toString() + "-"
-                                                        + ((objs[1] != null) ? Long.toString((Long)objs[1]): "0") + "-" + (( objs[2] != null) ? (BigDecimal)objs[2]: "0"); return s;}
-                                                    ).collect(Collectors.joining("|"));
-                    JsonArrayBuilder jsonArrayBuilder = versionStateSizeToJson(publishedDatasets.size(), pubDs, draftDatasets.size(), draftDs, deacDatasets.size(), deacDs);
+                    JsonArrayBuilder jsonArrayBuilder = versionStateSizeToJson(publishedDatasets.size(), pubDs, draftDatasets.size(), draftDs);
                     jsonArrayString = jsonArrayBuilder.build().toString();
                     metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
                 }
@@ -198,6 +194,79 @@ public class MetricsDans extends AbstractApiBean {
                     metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
                 }
                 return allowCors(ok(MetricsUtil.stringToJsonObjectBuilder(jsonArrayString)));
+            } catch (Exception ex) {
+                return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
+            }
+        } catch (Exception ex) {
+            return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
+        }
+    }
+
+    @GET
+    @Path("dataverses-report")
+    public Response getDataversesReport(@Context UriInfo uriInfo) {
+        String metricName = createMetricName(topLevelDvAlias,"dataverses-report");
+        try {
+            try {
+                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+                if (null == jsonArrayString) { //run query and save
+                    JsonObjectBuilder job = Json.createObjectBuilder();
+                    List<Object[]> dataverses = metricsSvc.dataversesByAlias(topLevelDvAlias);
+                    List<DvReport> dvReports = new ArrayList<>();
+                    dataverses.forEach(i -> {Long id = (Long)i[0];
+                        String status = "Published";
+                        if(i[4] == null)
+                            status = "Draft";
+                        List<Object[]> objs = metricsSvc.getDatasetsByOwnerId(id);
+                        long numbOffiles = 0;
+                        long totalStorage = 0;
+                        for (Object o[] : objs) {
+                            numbOffiles += (long)o[1];
+                            totalStorage += + ((BigDecimal)o[2]).longValue();
+                        }
+
+                        DvReport dvReport = new DvReport(id, (String)i[1], (String)i[2], "", (String)i[3], status, (String)i[5], objs.size(), numbOffiles,totalStorage);
+                        dvReports.add(dvReport);
+                                });
+                    JsonArrayBuilder jsonArrayBuilder = dataversesReportToJson(dvReports);
+                    jsonArrayString = jsonArrayBuilder.build().toString();
+                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                }
+                return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
+            } catch (Exception ex) {
+                return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
+            }
+        } catch (Exception ex) {
+            return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
+        }
+    }
+
+    @GET
+    @Path("datasets-report")
+    public Response getDatasetsReport(@Context UriInfo uriInfo) {
+        String metricName = createMetricName(topLevelDvAlias,"datasets-report");
+        try {
+            try {
+                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+                if (null == jsonArrayString) { //run query and save
+                    JsonObjectBuilder job = Json.createObjectBuilder();
+                    List<Object[]> dataverses = metricsSvc.dataversesByAlias(topLevelDvAlias);
+                    List<DsReport> dsReports = new ArrayList<>();
+                    dataverses.forEach(i -> {Long id = (Long)i[0];
+                        List<Object[]> objs = metricsSvc.getDatasetsAndDownloadsByOwnerId(id);
+                        for (Object o[] : objs) {
+                            String status = "Published";
+                            if (o[1] == null)
+                                status = "Draft";
+                            DsReport dsReport = new DsReport((String)i[1], (String)i[2], "", (String)o[0], status, (String)o[2], (long)o[3], ((BigDecimal)o[4]).longValue(), (long)o[5]);
+                            dsReports.add(dsReport);
+                        }
+                    });
+                    JsonArrayBuilder jsonArrayBuilder = datasetsReportToJson(dsReports);
+                    jsonArrayString = jsonArrayBuilder.build().toString();
+                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                }
+                return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
             } catch (Exception ex) {
                 return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
             }
@@ -324,9 +393,16 @@ public class MetricsDans extends AbstractApiBean {
                 objs[0] = (long)objs[0] + (long) objectArray[1];
                 objs[1] = (long)objs[1] + ((BigDecimal) objectArray[2]).longValue();
                 String desc = (long) objectArray[1] + "-" + ((BigDecimal) objectArray[2]).longValue();
+                if (type.equals("download")) {
+                    desc = objectArray[3].toString() + "-" + (long) objectArray[1] + "-" + ((BigDecimal) objectArray[2]).longValue();
+                    objs[2] = objs[2] + "#" + desc;
+                }
                 objs[2] = objs[2] + "#" + desc;
             } else {
                 String desc = (long) objectArray[1] + "-" + ((BigDecimal) objectArray[2]).longValue();
+                if (type.equals("download")) {
+                    desc = objectArray[3].toString() + "-" + (long) objectArray[1] + "-" + ((BigDecimal) objectArray[2]).longValue();
+                }
                 Object[] l = { objectArray[1], ((BigDecimal) objectArray[2]).longValue(), desc};
                 Object[] i = lm.replace(key, l);
             }
@@ -384,8 +460,7 @@ public class MetricsDans extends AbstractApiBean {
     }
 
     private JsonArrayBuilder versionStateSizeToJson(int numberOfPublished, String publishedDetails,
-                                                    int numberOfDraft, String draftDetails,
-                                                    int numberOfDeaccessioned, String deaccessionedDetails){
+                                                    int numberOfDraft, String draftDetails){
         JsonArrayBuilder jab = Json.createArrayBuilder();
         JsonObjectBuilder jobPublished = Json.createObjectBuilder();
         jobPublished.add("state", "PUBLISHED");//DatasetVersion.VersionState.RELEASED.name()
@@ -397,11 +472,45 @@ public class MetricsDans extends AbstractApiBean {
         jobDraft.add("count", numberOfDraft);
         jobDraft.add("name", draftDetails);
         jab.add(jobDraft);
-        JsonObjectBuilder jobDeac = Json.createObjectBuilder();
-        jobDeac.add("state", DatasetVersion.VersionState.DEACCESSIONED.name());
-        jobDeac.add("count", numberOfDeaccessioned);
-        jobDeac.add("name", deaccessionedDetails);
-        jab.add(jobDeac);
+        return jab;
+    }
+
+
+    private JsonArrayBuilder dataversesReportToJson(List<DvReport> dvReports){
+        JsonArrayBuilder jab = Json.createArrayBuilder();
+        dvReports.forEach(dvReport -> {
+            JsonObjectBuilder jobPublished = Json.createObjectBuilder();
+            jobPublished.add("name", dvReport.name);
+            jobPublished.add("alias", dvReport.alias);
+            jobPublished.add("path", dvReport.path);
+            jobPublished.add("createDate", dvReport.createDate);
+            jobPublished.add("status", dvReport.status);
+            jobPublished.add("category", dvReport.category);
+            jobPublished.add("numberOfDatasets", dvReport.numberOfDatasets);
+            jobPublished.add("numberOfFiles", dvReport.numberOfFiles);
+            jobPublished.add("totalStorage", dvReport.totalStorage);
+            jab.add(jobPublished);
+        });
+
+        return jab;
+    }
+
+    private JsonArrayBuilder datasetsReportToJson(List<DsReport> dsReports){
+        JsonArrayBuilder jab = Json.createArrayBuilder();
+        dsReports.forEach(dsReport -> {
+            JsonObjectBuilder jobPublished = Json.createObjectBuilder();
+            jobPublished.add("dvName", dsReport.dvName);
+            jobPublished.add("dvAlias", dsReport.dvAlias);
+            jobPublished.add("dvPath", dsReport.dvPath);
+            jobPublished.add("pid", dsReport.pid);
+            jobPublished.add("createDate", dsReport.createDate);
+            jobPublished.add("status", dsReport.status);
+            jobPublished.add("numberOfFiles", dsReport.numberOfFiles);
+            jobPublished.add("storageSize", dsReport.storageSize);
+            jobPublished.add("totalDownloads", dsReport.totalDownloads);
+            jab.add(jobPublished);
+        });
+
         return jab;
     }
 
@@ -531,6 +640,57 @@ public class MetricsDans extends AbstractApiBean {
             }
             jobPublished.add("children", jab);
             return jobPublished;
+        }
+    }
+
+    class DvReport {
+        private long id;
+        private String name;
+        private String alias;
+        private String path;
+        private String createDate;
+        private String status;
+        private String category;
+        private int numberOfDatasets;
+        private long numberOfFiles;
+        private long totalStorage;
+
+        public DvReport(long id, String name, String alias, String path, String createDate, String status, String category, int numberOfDatasets, long numberOfFiles, long totalStorage) {
+            this.id = id;
+            this.name = name;
+            this.alias = alias;
+            this.path = path;
+            this.createDate = createDate;
+            this.status = status;
+            this.category = category;
+            this.numberOfDatasets = numberOfDatasets;
+            this.numberOfFiles = numberOfFiles;
+            this.totalStorage = totalStorage;
+        }
+
+    }
+
+    class DsReport {
+        private String dvName;
+        private String dvAlias;
+        private String dvPath;
+        private String pid;
+        private String status;
+        private String createDate;
+        private long numberOfFiles;
+        private long storageSize;
+        private long totalDownloads;
+
+        public DsReport(String dvName, String dvAlias, String dvPath, String pid, String status, String createDate,  long numberOfFiles, long storageSize, long totalDownloads) {
+            this.dvName = dvName;
+            this.dvAlias = dvAlias;
+            this.dvPath = dvPath;
+            this.pid = pid;
+            this.status = status;
+            this.createDate = createDate;
+            this.numberOfFiles = numberOfFiles;
+            this.storageSize = storageSize;
+            this.totalDownloads = totalDownloads;
         }
     }
 

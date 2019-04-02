@@ -139,6 +139,33 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
         return em.createNativeQuery(sql).getResultList();
     }
 
+    public List<Object[]> getDatasetsByOwnerId(long id) {
+        String sql = "select (dvo1.authority || '/' || dvo1.identifier) as pid, count(dvo2.owner_id) as num, sum(df.filesize)\n"
+                + "from dvobject dvo1\n"
+                + "FULL OUTER JOIN dvobject dvo2 on dvo2.owner_id=dvo1.id\n"
+                + "FULL OUTER JOIN datafile df on df.id=dvo2.id\n"
+                + "where dvo1.dtype='Dataset'\n"
+                + "and dvo2.dtype='DataFile'\n"
+                + "and dvo1.owner_id = " + id + "\n"
+                + "group by pid order by num;";
+        logger.info("query - getDatasetsByOwnerIds: " + sql);
+        return em.createNativeQuery(sql).getResultList();
+    }
+
+    public List<Object[]> getDatasetsAndDownloadsByOwnerId(long id) {
+        String sql = "select (dvo1.authority || '/' || dvo1.identifier) as pid, dvo1.publicationdate, to_char(dvo1.createdate, 'YYYY-MM-DD') as create_date, count(dvo2.owner_id) as num, sum(df.filesize) as size, count(gb.id) as downloads\n\n"
+                + "from dvobject dvo1\n"
+                + "FULL OUTER JOIN dvobject dvo2 on dvo2.owner_id=dvo1.id\n"
+                + "FULL OUTER JOIN datafile df on df.id=dvo2.id\n"
+                + "FULL OUTER JOIN guestbookresponse gb on gb.dataset_id = dvo1.id and df.id = gb.datafile_id\n"
+                + "where dvo1.dtype='Dataset'\n"
+                + "and dvo2.dtype='DataFile'\n"
+                + "and dvo1.owner_id = " + id + "\n"
+                + "group by pid, dvo1.publicationdate, create_date order by num;";
+        logger.info("query - getDatasetsAndDownloadsByOwnerId: " + sql);
+        return em.createNativeQuery(sql).getResultList();
+    }
+
     /** Dataverses */
     public List<Object[]> dataversesAllTime(String dvAlias) throws Exception {
         String sql = "select date_trunc('year', createdate)::date as create_date, count(createdate)\n"
@@ -151,7 +178,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             sql += "where dvobject.id in (" + ids + ")\n";
         }
         sql += "group by create_date order by create_date;";
-        logger.info("query: " + sql);
+        logger.info("query - dataversesAllTime: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -165,9 +192,27 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             sql += "where dvobject.id in (" + ids + ")\n";
         }
         sql+= "group by dataversetype order by count desc;";
-        logger.info("query: " + sql);
+        logger.info("query - dataversesByCategory: " + sql);
         return  em.createNativeQuery(sql).getResultList();
     }
+
+    public List<Object[]> dataversesByAlias(String dvAlias) throws Exception {
+        String sql = "select dv.id, dv.name, dv.alias, to_char(dvo.createdate, 'YYYY-MM-DD'), dvo.publicationdate, dv.dataversetype\n"
+                + "from dataverse dv, dvobject dvo\n"
+                + "where dvo.id=dv.id and dvo.dtype='Dataverse'\n";
+        if (!dvAlias.equals("root")) {
+            String ids = convertListIdsToStringCommasparateIds(dvAlias, "Dataverse");
+            if (ids.equals(""))
+                return Collections.emptyList();
+            sql += "dv.id in (" + ids + ")\n";
+        }
+        sql+= "order by dvo.createdate";
+        logger.info("query - dataversesByAlias: " + sql);
+        return  em.createNativeQuery(sql).getResultList();
+    }
+
+
+
     
     /** Datasets */
     public List<Object[]> datasetsAllTime(String dvAlias) throws Exception {
