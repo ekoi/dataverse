@@ -211,21 +211,21 @@ public class MetricsDans extends AbstractApiBean {
                 String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
                 if (null == jsonArrayString) { //run query and save
                     JsonObjectBuilder job = Json.createObjectBuilder();
-                    List<Object[]> dataverses = metricsSvc.dataversesByAlias(topLevelDvAlias);
+                    List<Object[]> dvList = metricsSvc.dataversesByAlias(topLevelDvAlias);
                     List<DvReport> dvReports = new ArrayList<>();
-                    dataverses.forEach(i -> {Long id = (Long)i[0];
+                    dvList.forEach(dv -> {Long id = (Long)dv[0];
                         String status = "Published";
-                        if(i[4] == null)
+                        if(dv[4] == null)
                             status = "Draft";
-                        List<Object[]> objs = metricsSvc.getDatasetsByOwnerId(id);
+                        List<Object[]> dsLists = metricsSvc.getDatasetsByOwnerId(id);
                         long numbOffiles = 0;
                         long totalStorage = 0;
-                        for (Object o[] : objs) {
-                            numbOffiles += (long)o[1];
-                            totalStorage += + ((BigDecimal)o[2]).longValue();
+                        for (Object ds[] : dsLists) {
+                            numbOffiles += (long)ds[1];
+                            totalStorage += + ((BigDecimal)ds[2]).longValue();
                         }
-
-                        DvReport dvReport = new DvReport(id, (String)i[1], (String)i[2], "", (String)i[3], status, (String)i[5], objs.size(), numbOffiles,totalStorage);
+                        String path = metricsSvc.getPath(id);
+                        DvReport dvReport = new DvReport(id, (String)dv[1], (String)dv[2], path, (String)dv[3], status, (String)dv[5], dsLists.size(), numbOffiles,totalStorage);
                         dvReports.add(dvReport);
                                 });
                     JsonArrayBuilder jsonArrayBuilder = dataversesReportToJson(dvReports);
@@ -250,15 +250,17 @@ public class MetricsDans extends AbstractApiBean {
                 String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
                 if (null == jsonArrayString) { //run query and save
                     JsonObjectBuilder job = Json.createObjectBuilder();
-                    List<Object[]> dataverses = metricsSvc.dataversesByAlias(topLevelDvAlias);
+                    List<Object[]> dvList = metricsSvc.dataversesByAlias(topLevelDvAlias);
                     List<DsReport> dsReports = new ArrayList<>();
-                    dataverses.forEach(i -> {Long id = (Long)i[0];
-                        List<Object[]> objs = metricsSvc.getDatasetsAndDownloadsByOwnerId(id);
-                        for (Object o[] : objs) {
+                    dvList.forEach(dv -> {Long id = (Long)dv[0];
+                        List<Object[]> dsList = metricsSvc.getDatasetsAndDownloadsByOwnerId(id);
+                        for (Object ds[] : dsList) {
                             String status = "Published";
-                            if (o[1] == null)
+                            if (ds[1] == null)
                                 status = "Draft";
-                            DsReport dsReport = new DsReport((String)i[1], (String)i[2], "", (String)o[0], status, (String)o[2], (long)o[3], ((BigDecimal)o[4]).longValue(), (long)o[5]);
+                            int dsId = (int)ds[6];
+                            String path = metricsSvc.getPath(dsId);
+                            DsReport dsReport = new DsReport((String)dv[1], (String)dv[2], path, (String)ds[0], status, (String)ds[2], (long)ds[3], ((BigDecimal)ds[4]).longValue(), (long)ds[5]);
                             dsReports.add(dsReport);
                         }
                     });

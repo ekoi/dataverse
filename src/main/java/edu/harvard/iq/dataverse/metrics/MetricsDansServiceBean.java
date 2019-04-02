@@ -153,7 +153,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
     }
 
     public List<Object[]> getDatasetsAndDownloadsByOwnerId(long id) {
-        String sql = "select (dvo1.authority || '/' || dvo1.identifier) as pid, dvo1.publicationdate, to_char(dvo1.createdate, 'YYYY-MM-DD') as create_date, count(dvo2.owner_id) as num, sum(df.filesize) as size, count(gb.id) as downloads\n\n"
+        String sql = "select (dvo1.authority || '/' || dvo1.identifier) as pid, dvo1.publicationdate, to_char(dvo1.createdate, 'YYYY-MM-DD') as create_date, count(dvo2.owner_id) as num, sum(df.filesize) as size, count(gb.id) as downloads, dvo1.id\n"
                 + "from dvobject dvo1\n"
                 + "FULL OUTER JOIN dvobject dvo2 on dvo2.owner_id=dvo1.id\n"
                 + "FULL OUTER JOIN datafile df on df.id=dvo2.id\n"
@@ -161,7 +161,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "where dvo1.dtype='Dataset'\n"
                 + "and dvo2.dtype='DataFile'\n"
                 + "and dvo1.owner_id = " + id + "\n"
-                + "group by pid, dvo1.publicationdate, create_date order by num;";
+                + "group by dvo1.id, pid, dvo1.publicationdate, create_date order by num;";
         logger.info("query - getDatasetsAndDownloadsByOwnerId: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
@@ -271,6 +271,22 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
         String[] dvIds = Arrays.stream(getChildrenIdsRecursively(dvAlias, dtype, null).stream().mapToInt(i->i).toArray())
                 .mapToObj(String::valueOf).toArray(String[]::new);
         return String.join(",", dvIds);
+    }
+
+    public String getPath(long id) {
+        String sql = "select array_to_string(array(\n"
+                + "WITH RECURSIVE rec as\n"
+                + "(\n"
+                + "SELECT dvobject.id, dvobject.dtype, dvobject.owner_id, 0 as depth from dvobject where id=" + id + "\n"
+                + "UNION ALL\n"
+                + "SELECT dvobject.id, dvobject.dtype, dvobject.owner_id, depth+ 1 from rec, dvobject where dvobject.id = rec.owner_id\n"
+                + ")\n"
+                + "SELECT d.name\n"
+                + "FROM rec r, dataverse d where d.id=r.id and r.dtype = 'Dataverse' and r.owner_id is not null order by r.depth desc), '-> ');";
+        logger.info("query - getPath: " + sql);
+        Query query = em.createNativeQuery(sql);
+        return (String)query.getSingleResult();
+
     }
 
     /** Downloads */
