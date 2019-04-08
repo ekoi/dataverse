@@ -37,6 +37,9 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("dataverses")
     public Response getDataversesAllTime(@Context UriInfo uriInfo) {
+        if (!isTopLevelDvAlias(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
         String metricName = createMetricName(topLevelDvAlias,"dataverses");
         try {
             String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
@@ -58,6 +61,9 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("dataverses/addedOverTime")
     public Response getDataversesAddedOverTime(@Context UriInfo uriInfo) {
+        if (!isTopLevelDvAlias(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
         String metricName = createMetricName(topLevelDvAlias,"dataverses/addedOverTime");
         logger.info(metricName);
        try {
@@ -77,6 +83,9 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("dataverses/byCategory")
     public Response getDataversesByCategory() {
+        if (!isTopLevelDvAlias(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
         String metricName = createMetricName(topLevelDvAlias,"dataverses/byCategory");
         try {
             String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
@@ -95,27 +104,34 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("datasets")
     public Response countDatasets(@Context UriInfo uriInfo) {
-        String metricName = createMetricName(topLevelDvAlias,"datasets");
+            if (!isTopLevelDvAlias(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
+        String metricName = createMetricName(topLevelDvAlias, "datasets");
         try {
-            try {
-                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
-                if (null == jsonArrayString) { //run query and save
-                    List<Integer> publishedDatasets = metricsSvc.getListOfDatasetsByStatusAndByDvAlias(topLevelDvAlias, DatasetVersion.VersionState.RELEASED);
-                    String pubDs = metricsSvc.getDatasetsIdentifierByIds(publishedDatasets).stream().map(n -> {Object[] objs = (Object[])n; String s= objs[0].toString() + "-"
-                                                        + ((objs[1] != null) ? Long.toString((Long)objs[1]): "0") + "-" + (( objs[2] != null) ? (BigDecimal)objs[2]: "0"); return s;}
-                                                    ).collect(Collectors.joining("|"));
-                    List<Integer> draftDatasets = metricsSvc.getListOfDatasetsByStatusAndByDvAlias(topLevelDvAlias, DatasetVersion.VersionState.DRAFT);
-                    String draftDs = metricsSvc.getDatasetsIdentifierByIds(draftDatasets).stream().map(n -> {Object[] objs = (Object[])n; String s= objs[0].toString() + "-"
-                                                        + ((objs[1] != null) ? Long.toString((Long)objs[1]): "0") + "-" + (( objs[2] != null) ? (BigDecimal)objs[2]: "0"); return s;}
-                                                    ).collect(Collectors.joining("|"));
-                    JsonArrayBuilder jsonArrayBuilder = versionStateSizeToJson(publishedDatasets.size(), pubDs, draftDatasets.size(), draftDs);
-                    jsonArrayString = jsonArrayBuilder.build().toString();
-                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
-                }
-                return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
-            } catch (Exception ex) {
-                return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            if (null == jsonArrayString) { //run query and save
+                List<Integer> publishedDatasets = metricsSvc.getListOfDatasetsByStatusAndByDvAlias(topLevelDvAlias, true);
+                String pubDs = metricsSvc.getDatasetsIdentifierByIds(publishedDatasets).stream().map(n -> {
+                            Object[] objs = (Object[]) n;
+                            String s = objs[0].toString() + "-"
+                                    + ((objs[1] != null) ? Long.toString((Long) objs[1]) : "0") + "-" + ((objs[2] != null) ? (BigDecimal) objs[2] : "0");
+                            return s;
+                        }
+                ).collect(Collectors.joining("|"));
+                List<Integer> draftDatasets = metricsSvc.getListOfDatasetsByStatusAndByDvAlias(topLevelDvAlias, false);
+                String draftDs = metricsSvc.getDatasetsIdentifierByIds(draftDatasets).stream().map(n -> {
+                            Object[] objs = (Object[]) n;
+                            String s = objs[0].toString() + "-"
+                                    + ((objs[1] != null) ? Long.toString((Long) objs[1]) : "0") + "-" + ((objs[2] != null) ? (BigDecimal) objs[2] : "0");
+                            return s;
+                        }
+                ).collect(Collectors.joining("|"));
+                JsonArrayBuilder jsonArrayBuilder = versionStateSizeToJson(publishedDatasets.size(), pubDs, draftDatasets.size(), draftDs);
+                jsonArrayString = jsonArrayBuilder.build().toString();
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
             }
+            return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
             return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
         }
@@ -124,11 +140,14 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("datasets/bySubject")
     public Response getDatasetsBySubject() {
+        if (!isTopLevelDvAlias(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
         String metricName = createMetricName(topLevelDvAlias,"datasets/bySubject");
         try {
             String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
             if (null == jsonArrayString) { //run query and save
-                JsonArrayBuilder jsonArrayBuilder = MetricsUtil.datasetsBySubjectToJson(metricsSvc.datasetsBySubject(topLevelDvAlias));
+                JsonArrayBuilder jsonArrayBuilder = datasetsBySubjectToJson(metricsSvc.datasetsBySubject(topLevelDvAlias));
                 jsonArrayString = jsonArrayBuilder.build().toString();
                 metricsSvc.save(new Metric(metricName, jsonArrayString), false);
             }
@@ -141,9 +160,11 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("datasets/addedOverTime")
     public Response getDatasetsAddedOverTime(@Context UriInfo uriInfo) {
+        if (!isTopLevelDvAlias(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
         String metricName = createMetricName(topLevelDvAlias,"datasets/addedOverTime");
         try {
-            try {
                 String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
                 if (null == jsonArrayString) { //run query and save
                     JsonArrayBuilder jsonArrayBuilder = datasetsAllYearsToJson(metricsSvc.datasetsAllTime(topLevelDvAlias));
@@ -153,28 +174,24 @@ public class MetricsDans extends AbstractApiBean {
                 return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
             } catch (Exception ex) {
                 return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
-            }
-        } catch (Exception ex) {
-            return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
         }
     }
 
     @GET
     @Path("files")
     public Response getFilesAllYears(@Context UriInfo uriInfo) {
-        String metricName = createMetricName(topLevelDvAlias,"files");
+        if (!isTopLevelDvAlias(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
+        String metricName = createMetricName(topLevelDvAlias, "files");
         try {
-            try {
-                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
-                if (null == jsonArrayString) { //run query and save
-                    JsonArrayBuilder jsonArrayBuilder = filesAllYearsToJson(metricsSvc.filesAllTime(topLevelDvAlias), "added");
-                    jsonArrayString = jsonArrayBuilder.build().toString();
-                    metricsSvc.save(new Metric(metricName, jsonArrayString), false);
-                }
-                return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
-            } catch (Exception ex) {
-                return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            if (null == jsonArrayString) { //run query and save
+                JsonArrayBuilder jsonArrayBuilder = filesAllYearsToJson(metricsSvc.filesAllTime(topLevelDvAlias), "added");
+                jsonArrayString = jsonArrayBuilder.build().toString();
+                metricsSvc.save(new Metric(metricName, jsonArrayString), false);
             }
+            return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
             return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
         }
@@ -183,20 +200,16 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("tree")
     public Response getDataversesTree(@Context UriInfo uriInfo) {
-        String metricName = createMetricName(topLevelDvAlias,"tree");
+        String metricName = createMetricName(topLevelDvAlias, "tree");
         try {
-            try {
-                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
-                if (null == jsonArrayString) { //run query and save
-                    JsonObjectBuilder job = Json.createObjectBuilder();
-                    job = dataversesTreeToJson(metricsSvc.getDataversesChildrenRecursively(topLevelDvAlias));
-                    jsonArrayString = job.build().toString();
-                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
-                }
-                return allowCors(ok(MetricsUtil.stringToJsonObjectBuilder(jsonArrayString)));
-            } catch (Exception ex) {
-                return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            if (null == jsonArrayString) { //run query and save
+                JsonObjectBuilder job = Json.createObjectBuilder();
+                job = dataversesTreeToJson(metricsSvc.getDataversesChildrenRecursively(topLevelDvAlias));
+                jsonArrayString = job.build().toString();
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
             }
+            return allowCors(ok(MetricsUtil.stringToJsonObjectBuilder(jsonArrayString)));
         } catch (Exception ex) {
             return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
         }
@@ -205,37 +218,37 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("dataverses-report")
     public Response getDataversesReport(@Context UriInfo uriInfo) {
-        String metricName = createMetricName(topLevelDvAlias,"dataverses-report");
+        if (!isTopLevelDvAlias(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
+        String metricName = createMetricName(topLevelDvAlias, "dataverses-report");
         try {
-            try {
-                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
-                if (null == jsonArrayString) { //run query and save
-                    JsonObjectBuilder job = Json.createObjectBuilder();
-                    List<Object[]> dvList = metricsSvc.dataversesByAlias(topLevelDvAlias);
-                    List<DvReport> dvReports = new ArrayList<>();
-                    dvList.forEach(dv -> {Long id = (Long)dv[0];
-                        String status = "Published";
-                        if(dv[4] == null)
-                            status = "Draft";
-                        List<Object[]> dsLists = metricsSvc.getDatasetsByOwnerId(id);
-                        long numbOffiles = 0;
-                        long totalStorage = 0;
-                        for (Object ds[] : dsLists) {
-                            numbOffiles += (long)ds[1];
-                            totalStorage += + ((BigDecimal)ds[2]).longValue();
-                        }
-                        String path = metricsSvc.getPath(id);
-                        DvReport dvReport = new DvReport(id, (String)dv[1], (String)dv[2], path, (String)dv[3], status, (String)dv[5], dsLists.size(), numbOffiles,totalStorage);
-                        dvReports.add(dvReport);
-                                });
-                    JsonArrayBuilder jsonArrayBuilder = dataversesReportToJson(dvReports);
-                    jsonArrayString = jsonArrayBuilder.build().toString();
-                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
-                }
-                return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
-            } catch (Exception ex) {
-                return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            if (null == jsonArrayString) { //run query and save
+                JsonObjectBuilder job = Json.createObjectBuilder();
+                List<Object[]> dvList = metricsSvc.dataversesByAlias(topLevelDvAlias);
+                List<DvReport> dvReports = new ArrayList<>();
+                dvList.forEach(dv -> {
+                    Long id = (Long) dv[0];
+                    String status = "Published";
+                    if (dv[4] == null)
+                        status = "Draft";
+                    List<Object[]> dsLists = metricsSvc.getDatasetsByOwnerId(id);
+                    long numbOffiles = 0;
+                    long totalStorage = 0;
+                    for (Object ds[] : dsLists) {
+                        numbOffiles += (long) ds[1];
+                        totalStorage += +((BigDecimal) ds[2]).longValue();
+                    }
+                    String path = metricsSvc.getPath(id);
+                    DvReport dvReport = new DvReport(id, (String) dv[1], (String) dv[2], path, (String) dv[3], status, (String) dv[5], dsLists.size(), numbOffiles, totalStorage);
+                    dvReports.add(dvReport);
+                });
+                JsonArrayBuilder jsonArrayBuilder = dataversesReportToJson(dvReports);
+                jsonArrayString = jsonArrayBuilder.build().toString();
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
             }
+            return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
             return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
         }
@@ -244,34 +257,34 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("datasets-report")
     public Response getDatasetsReport(@Context UriInfo uriInfo) {
-        String metricName = createMetricName(topLevelDvAlias,"datasets-report");
+        if (!isTopLevelDvAlias(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
+        String metricName = createMetricName(topLevelDvAlias, "datasets-report");
         try {
-            try {
-                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
-                if (null == jsonArrayString) { //run query and save
-                    JsonObjectBuilder job = Json.createObjectBuilder();
-                    List<Object[]> dvList = metricsSvc.dataversesByAlias(topLevelDvAlias);
-                    List<DsReport> dsReports = new ArrayList<>();
-                    dvList.forEach(dv -> {Long id = (Long)dv[0];
-                        List<Object[]> dsList = metricsSvc.getDatasetsAndDownloadsByOwnerId(id);
-                        for (Object ds[] : dsList) {
-                            String status = "Published";
-                            if (ds[1] == null)
-                                status = "Draft";
-                            int dsId = (int)ds[6];
-                            String path = metricsSvc.getPath(dsId);
-                            DsReport dsReport = new DsReport((String)dv[1], (String)dv[2], path, (String)ds[0], status, (String)ds[2], (long)ds[3], ((BigDecimal)ds[4]).longValue(), (long)ds[5]);
-                            dsReports.add(dsReport);
-                        }
-                    });
-                    JsonArrayBuilder jsonArrayBuilder = datasetsReportToJson(dsReports);
-                    jsonArrayString = jsonArrayBuilder.build().toString();
-                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
-                }
-                return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
-            } catch (Exception ex) {
-                return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            if (null == jsonArrayString) { //run query and save
+                JsonObjectBuilder job = Json.createObjectBuilder();
+                List<Object[]> dvList = metricsSvc.dataversesByAlias(topLevelDvAlias);
+                List<DsReport> dsReports = new ArrayList<>();
+                dvList.forEach(dv -> {
+                    Long id = (Long) dv[0];
+                    List<Object[]> dsList = metricsSvc.getDatasetsAndDownloadsByOwnerId(id);
+                    for (Object ds[] : dsList) {
+                        String status = "Published";
+                        if (ds[1] == null)
+                            status = "Draft";
+                        int dsId = (int) ds[6];
+                        String path = metricsSvc.getPath(dsId);
+                        DsReport dsReport = new DsReport((String) dv[1], (String) dv[2], path, (String) ds[0], status, (String) ds[2], (long) ds[3], ((BigDecimal) ds[4]).longValue(), (long) ds[5]);
+                        dsReports.add(dsReport);
+                    }
+                });
+                JsonArrayBuilder jsonArrayBuilder = datasetsReportToJson(dsReports);
+                jsonArrayString = jsonArrayBuilder.build().toString();
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
             }
+            return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
             return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
         }
@@ -280,19 +293,18 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("downloads")
     public Response getDownloadsAllTime() {
-        String metricName = createMetricName(topLevelDvAlias,"downloads");
+        if (!isTopLevelDvAlias(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
+        String metricName = createMetricName(topLevelDvAlias, "downloads");
         try {
-            try {
-                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
-                if (null == jsonArrayString) { //run query and save
-                    JsonArrayBuilder jsonArrayBuilder = filesAllYearsToJson(metricsSvc.downloadsAllTime(topLevelDvAlias), "download");
-                    jsonArrayString = jsonArrayBuilder.build().toString();
-                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
-                }
-                return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
-            } catch (Exception ex) {
-                return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            if (null == jsonArrayString) { //run query and save
+                JsonArrayBuilder jsonArrayBuilder = filesAllYearsToJson(metricsSvc.downloadsAllTime(topLevelDvAlias), "download");
+                jsonArrayString = jsonArrayBuilder.build().toString();
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
             }
+            return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
             return allowCors(error(BAD_REQUEST, ex.getLocalizedMessage()));
         }
@@ -348,6 +360,10 @@ public class MetricsDans extends AbstractApiBean {
         return jab;
     }
 
+    private boolean isTopLevelDvAlias(String alias) {
+        return metricsSvc.dataverseAliasExist(alias);
+    }
+
     private JsonArrayBuilder datasetsAllYearsToJson(List<Object[]> listOfObjectArrays){
         JsonArrayBuilder jab = Json.createArrayBuilder();
         if (listOfObjectArrays.isEmpty())
@@ -372,7 +388,7 @@ public class MetricsDans extends AbstractApiBean {
                     sufficStrDate = "-07-01";
                 }
                 String strDate =k.split("Q")[0] + sufficStrDate;
-                pids = metricsSvc.getDatasetsPIDByStringDate(strDate).stream().map(n -> n.toString() ).collect(Collectors.joining("|"));
+                pids = metricsSvc.getDatasetsPIDByStringDate(topLevelDvAlias, strDate).stream().map(n -> n.toString() ).collect(Collectors.joining("|"));
             }
             job.add("pids", pids);
             jab.add(job);
@@ -398,8 +414,8 @@ public class MetricsDans extends AbstractApiBean {
                 if (type.equals("download")) {
                     desc = objectArray[3].toString() + "-" + (long) objectArray[1] + "-" + ((BigDecimal) objectArray[2]).longValue();
                     objs[2] = objs[2] + "#" + desc;
-                }
-                objs[2] = objs[2] + "#" + desc;
+                } else
+                    objs[2] = objs[2] + "#" + desc;
             } else {
                 String desc = (long) objectArray[1] + "-" + ((BigDecimal) objectArray[2]).longValue();
                 if (type.equals("download")) {
@@ -477,7 +493,6 @@ public class MetricsDans extends AbstractApiBean {
         return jab;
     }
 
-
     private JsonArrayBuilder dataversesReportToJson(List<DvReport> dvReports){
         JsonArrayBuilder jab = Json.createArrayBuilder();
         dvReports.forEach(dvReport -> {
@@ -516,6 +531,18 @@ public class MetricsDans extends AbstractApiBean {
         return jab;
     }
 
+    private JsonArrayBuilder datasetsBySubjectToJson(List<Object[]> listOfObjectArrays) {
+        JsonArrayBuilder jab = Json.createArrayBuilder();
+        for (Object[] objectArray : listOfObjectArrays) {
+            JsonObjectBuilder job = Json.createObjectBuilder();
+            String subject = (String) objectArray[0];
+            long count = (long) objectArray[1];
+            job.add("subject", subject);
+            job.add("count", 1);
+            jab.add(job);
+        }
+        return jab;
+    }
     private static JsonObjectBuilder createTree(List<DataverseNode> dataverseNodes) {
         Map<Integer, DataverseNode> mapTmp = new HashMap<>();
         //Save all dataverseNodes to a map

@@ -22,12 +22,14 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
     @PersistenceContext(unitName = "VDCNet-ejbPU")
     private EntityManager em;
 
-    public List<Integer> getListOfDatasetsByStatusAndByDvAlias(String commasparateDvAlias, DatasetVersion.VersionState versionState) {
-        String sql = "select dvo.id from dvobject dvo, datasetversion dsv\n"
-                   + "where dvo.id=dsv.dataset_id and dvo.identifier is not null\n"
+    public List<Integer> getListOfDatasetsByStatusAndByDvAlias(String commasparateDvAlias, boolean hasBeenPublisheed) {
+        String sql = "select dvo.id from dvobject dvo\n"
+                   + "where dvo.identifier is not null\n"
                    + "and dvo.dtype='Dataset' \n";
-        if (versionState != null)
-            sql += "and dsv.versionstate = '" + versionState.name() + "'\n";
+        if (hasBeenPublisheed)
+            sql += "and dvo.publicationdate is not null\n";
+        else
+            sql += "and dvo.publicationdate is null\n";
         if (!commasparateDvAlias.equals("root")) {
             String commasparateDvIds = convertListIdsToStringCommasparateIds(commasparateDvAlias, "Dataverse");
             sql += "and dvo.owner_id in (" + commasparateDvIds + ")\n";
@@ -130,11 +132,18 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
         return em.createNativeQuery(sql).getResultList();
     }
 
-    public List<String> getDatasetsPIDByStringDate(String strDate) {
+    public List<String> getDatasetsPIDByStringDate(String dvAlias, String strDate) {
         String sql = "select (dvo.authority || '/' || dvo.identifier) as pid\n"
                 + "from dataset ds, dvobject dvo\n"
                 + "where dvo.id = ds.id and dvo.dtype='Dataset'\n"
                 + "and date_trunc('quarter', dvo.createdate)='" + strDate + "'";
+        if (!dvAlias.equals("root")) {
+            String ids = convertListIdsToStringCommasparateIds(dvAlias, "Dataset");
+            if (ids.equals(""))
+                return Collections.emptyList();
+
+            sql += "and dvo.id in (" + ids + ")\n";
+        }
         logger.info("query - getDatasetsPIDByStringDate: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
@@ -206,7 +215,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 return Collections.emptyList();
             sql += "dv.id in (" + ids + ")\n";
         }
-        sql+= "order by dvo.createdate";
+        sql+= "order by dvo.createdate;";
         logger.info("query - dataversesByAlias: " + sql);
         return  em.createNativeQuery(sql).getResultList();
     }
@@ -226,12 +235,12 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             sql += "where dvobject.id in (" + ids + ")\n";
         }
         sql +="group by create_date order by create_date;";
-        logger.info("query: " + sql);
+        logger.info("query - datasetsAllTime: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
     public List<Object[]> datasetsBySubject(String dvAlias) {
-        String sql ="SELECT strvalue, count(dataset.id)\n"
+        String sql ="SELECT strvalue, count(dataset.id), dataset.id\n"
                 + "FROM datasetfield_controlledvocabularyvalue \n"
                 + "JOIN controlledvocabularyvalue ON controlledvocabularyvalue.id = datasetfield_controlledvocabularyvalue.controlledvocabularyvalues_id\n"
                 + "JOIN datasetfield ON datasetfield.id = datasetfield_controlledvocabularyvalue.datasetfield_id\n"
@@ -240,15 +249,25 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "JOIN dvobject ON dvobject.id = datasetversion.dataset_id\n"
                 + "JOIN dataset ON dataset.id = datasetversion.dataset_id\n"
                 + "WHERE\n"
-                + "datasetfieldtype.name = 'subject'\n";
-        if (!dvAlias.equals("root")) {
-            String ids = convertListIdsToStringCommasparateIds(dvAlias, "Dataset");
-            if (ids.equals(""))
-                return Collections.emptyList();
-            sql += "and datasetversion.dataset_id in (" + ids + ")\n";
-        }
-        sql += "GROUP BY strvalue ORDER BY count(dataset.id) desc;";
-        logger.info("query: " + sql);
+                + "datasetfieldtype.name = 'subject'\n"
+                + "and datasetversion.dataset_id in (\n"
+                + "select id from dvobject where owner_id in (\n"
+                + "WITH RECURSIVE querytree AS (\n"
+                + "SELECT id, dtype, owner_id, publicationdate\n"
+                + "FROM dvobject\n"
+                + "WHERE id in (select id from dataverse where alias in ('" + (dvAlias.replaceAll(",", "','")) + "'))\n"
+                + "UNION ALL\n"
+                + "SELECT e.id, e.dtype, e.owner_id, e.publicationdate\n"
+                + "FROM dvobject e\n"
+                + "INNER JOIN querytree qtree ON qtree.id = e.owner_id\n"
+                + ")\n"
+                + "SELECT id\n"
+                + "FROM querytree\n"
+                + "where dtype='Dataverse' and owner_id is not null\n"
+                + "))\n"
+                + "GROUP BY strvalue, dataset.id ORDER BY count(dataset.id) desc;";
+
+        logger.info("query - datasetsBySubject: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -289,23 +308,23 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
 
     }
 
-    /** Downloads */
-    public List<Object[]> downloadsAllTimeWithoutPid(String commasparateDvAlias) throws Exception {
-        String sql = "select date_trunc('quarter', gb.responsetime)::date as response_time, count(gb.responsetime), sum(df.filesize)\n"
-                + "from guestbookresponse gb, datafile df\n"
-                + "where responsetime is not null\n"
-                + "and gb.datafile_id=df.id\n";
-        if (!commasparateDvAlias.equals("root")) {
-            List<Integer> datasetIds = getListOfDatasetsByStatusAndByDvAlias(commasparateDvAlias, null);
-            if (datasetIds.isEmpty())
-                return Collections.emptyList();
-            String commasparateDatasetIds = datasetIds.stream().map( n -> n.toString() ).collect(Collectors.joining(","));
-            sql+= "and dataset_id in (" + commasparateDatasetIds + ")\n";
-        }
-        sql += "group by response_time order by response_time;";
-        logger.info("query - downloadsAllTime: " + sql);
-        return  em.createNativeQuery(sql).getResultList();
+    public boolean dataverseAliasExist(String alias) {
+        if (alias == null)
+            return false;
+
+        if (alias.trim().isEmpty())
+            return false;
+        int numberOfAliases = alias.split(",").length;
+        String sql = "select count(*)= " + numberOfAliases + "\n"
+                + "from dataverse dv, dvobject dvo \n"
+                + "where dvo.id=dv.id and (dvo.owner_id=1 or dvo.owner_id is null) and dv.alias in ('" + (alias.replaceAll(",", "','")) + "');\n";
+        logger.info("query - dataverseAliasExist: " + sql);
+        Query query = em.createNativeQuery(sql);
+        return (boolean)query.getSingleResult();
+
     }
+
+    /** Downloads */
 
     public List<Object[]> downloadsAllTime(String commasparateDvAlias) throws Exception {
         String sql = "select date_trunc('quarter', gb.responsetime)::date as response_time, count(gb.responsetime), sum(df.filesize), (dvo.authority || '/' || dvo.identifier) as pid\n"
@@ -314,7 +333,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "join dvobject dvo on dvo.id=gb.dataset_id\n"
                 + "where gb.responsetime is not null\n";
         if (!commasparateDvAlias.equals("root")) {
-            List<Integer> datasetIds = getListOfDatasetsByStatusAndByDvAlias(commasparateDvAlias, null);
+            List<Integer> datasetIds = getListOfDatasetsByStatusAndByDvAlias(commasparateDvAlias, true);
             if (datasetIds.isEmpty())
                 return Collections.emptyList();
             String commasparateDatasetIds = datasetIds.stream().map( n -> n.toString() ).collect(Collectors.joining(","));
