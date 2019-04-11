@@ -308,16 +308,18 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
 
     }
 
-    public boolean dataverseAliasExist(String alias) {
-        if (alias == null)
+    public boolean dataverseAliasExist(String dvAlias) {
+        if (dvAlias == null)
             return false;
 
-        if (alias.trim().isEmpty())
+        if (dvAlias.trim().isEmpty())
             return false;
-        int numberOfAliases = alias.split(",").length;
+
+        dvAlias = dvAlias.replaceAll("\\+", "_");//this is for tilburg_nondsa since the generateMetricName method of edu.harvard.iq.dataverse.Metric
+        int numberOfAliases = dvAlias.split(",").length;
         String sql = "select count(*)= " + numberOfAliases + "\n"
                 + "from dataverse dv, dvobject dvo \n"
-                + "where dvo.id=dv.id and (dvo.owner_id=1 or dvo.owner_id is null) and dv.alias in ('" + (alias.replaceAll(",", "','")) + "');\n";
+                + "where dvo.id=dv.id and (dvo.owner_id=1 or dvo.owner_id is null) and dv.alias in ('" + (dvAlias.replaceAll(",", "','")) + "');\n";
         logger.info("query - dataverseAliasExist: " + sql);
         Query query = em.createNativeQuery(sql);
         return (boolean)query.getSingleResult();
