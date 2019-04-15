@@ -213,7 +213,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             String ids = convertListIdsToStringCommasparateIds(dvAlias, "Dataverse");
             if (ids.equals(""))
                 return Collections.emptyList();
-            sql += "dv.id in (" + ids + ")\n";
+            sql += "and dv.id in (" + ids + ")\n";
         }
         sql+= "order by dvo.createdate;";
         logger.info("query - dataversesByAlias: " + sql);
