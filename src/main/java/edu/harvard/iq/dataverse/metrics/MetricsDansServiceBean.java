@@ -308,7 +308,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
 
     }
 
-    public boolean dataverseAliasExist(String dvAlias) {
+    public boolean dataverseAliasExist(String dvAlias, boolean topLevelOnly) {
         if (dvAlias == null)
             return false;
 
@@ -319,7 +319,12 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
         int numberOfAliases = dvAlias.split(",").length;
         String sql = "select count(*)= " + numberOfAliases + "\n"
                 + "from dataverse dv, dvobject dvo \n"
-                + "where dvo.id=dv.id and (dvo.owner_id=1 or dvo.owner_id is null) and dv.alias in ('" + (dvAlias.replaceAll(",", "','")) + "');\n";
+                + "where dvo.id=dv.id\n";
+        if (topLevelOnly)
+            sql += "and (dvo.owner_id=1 or dvo.owner_id is null)\n";
+
+        sql += "and dv.alias in ('" + (dvAlias.replaceAll(",", "','")) + "');\n";
+
         logger.info("query - dataverseAliasExist: " + sql);
         Query query = em.createNativeQuery(sql);
         return (boolean)query.getSingleResult();
