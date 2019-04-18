@@ -200,6 +200,9 @@ public class MetricsDans extends AbstractApiBean {
     @GET
     @Path("tree")
     public Response getDataversesTree(@Context UriInfo uriInfo) {
+        if (!isDvAliasExist(topLevelDvAlias))
+            return allowCors(error(BAD_REQUEST, "Not found"));
+
         String metricName = createMetricName(topLevelDvAlias, "tree");
         try {
             String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
@@ -361,7 +364,11 @@ public class MetricsDans extends AbstractApiBean {
     }
 
     private boolean isTopLevelDvAlias(String alias) {
-        return metricsSvc.dataverseAliasExist(alias);
+        return metricsSvc.dataverseAliasExist(alias, true);
+    }
+
+    private boolean isDvAliasExist(String alias) {
+        return metricsSvc.dataverseAliasExist(alias, false);
     }
 
     private JsonArrayBuilder datasetsAllYearsToJson(List<Object[]> listOfObjectArrays){
