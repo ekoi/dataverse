@@ -6,10 +6,14 @@ import edu.harvard.iq.dataverse.actionlogging.ActionLogRecord;
 import edu.harvard.iq.dataverse.actionlogging.ActionLogServiceBean;
 import edu.harvard.iq.dataverse.authorization.users.GuestUser;
 import edu.harvard.iq.dataverse.authorization.users.User;
+import edu.harvard.iq.dataverse.util.SystemConfig;
 import java.io.Serializable;
+import java.util.logging.Logger;
 import javax.ejb.EJB;
 import javax.enterprise.context.SessionScoped;
+import javax.faces.context.FacesContext;
 import javax.inject.Named;
+import javax.servlet.http.HttpSession;
 
 /**
  *
@@ -30,7 +34,12 @@ public class DataverseSession implements Serializable{
 	
     @EJB 
     ActionLogServiceBean logSvc;
-    
+
+    @EJB
+    SystemConfig systemConfig;
+
+    private static final Logger logger = Logger.getLogger(DataverseSession.class.getCanonicalName());
+
     private boolean statusDismissed = false;
     
     public User getUser() {
@@ -61,4 +70,13 @@ public class DataverseSession implements Serializable{
             return permissionsService.userOn(user, d);
     }
 
+    public void configureSessionTimeout() {
+        HttpSession httpSession = (HttpSession) FacesContext.getCurrentInstance().getExternalContext().getSession(false);
+
+        if (httpSession != null) {
+            logger.info("jsession: "+httpSession.getId()+" setting the lifespan of the session to " + systemConfig.getLoginSessionTimeout() + " minutes");
+            httpSession.setMaxInactiveInterval(systemConfig.getLoginSessionTimeout() * 60); // session timeout, in seconds
+        }
+
+    }
 }
