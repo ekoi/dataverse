@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.ejb.EJB;
+import javax.enterprise.context.RequestScoped;
 import javax.faces.context.FacesContext;
 import javax.faces.view.ViewScoped;
 import javax.inject.Inject;
@@ -47,7 +48,8 @@ import javax.inject.Named;
 import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang.StringUtils;
 
-@ViewScoped
+//@ViewScoped
+@RequestScoped
 @Named("SearchIncludeFragment")
 public class SearchIncludeFragment implements java.io.Serializable {
 
@@ -437,6 +439,8 @@ public class SearchIncludeFragment implements java.io.Serializable {
                     }
                 }
             }
+
+            setDisplayCardValues();
 
         } else {
             // if SOLR is down:
