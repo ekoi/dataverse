@@ -23,6 +23,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import javax.ejb.EJB;
+import javax.enterprise.context.RequestScoped;
 import javax.faces.view.ViewScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -33,7 +34,8 @@ import org.apache.log4j.Logger;
  *
  * @author Leonid Andreev
  */
-@ViewScoped
+//@ViewScoped
+@RequestScoped
 @Named
 public class ThumbnailServiceWrapper implements java.io.Serializable  {
     @Inject

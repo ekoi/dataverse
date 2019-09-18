@@ -92,6 +92,7 @@ public class SystemConfig {
      */
     private static final int defaultZipUploadFilesLimit = 1000; 
     private static final int defaultMultipleUploadFilesLimit = 1000;
+    private static final int defaultLoginSessionTimeout = 480; // = 8 hours
 
     private static String appVersionString = null; 
     private static String buildNumberString = null; 
@@ -388,6 +389,18 @@ public class SystemConfig {
         return metricsUrl;
     }
 
+    static int getIntLimitFromStringOrDefault(String limitSetting, Integer defaultValue) {
+        Integer limit = null;
+        if (limitSetting != null && !limitSetting.equals("")) {
+            try {
+                limit = new Integer(limitSetting);
+            } catch (NumberFormatException nfe) {
+                limit = null;
+            }
+        }
+        return limit != null ? limit : defaultValue;
+    }
+
     /**
      * Download-as-zip size limit.
      * returns 0 if not specified; 
@@ -432,7 +445,17 @@ public class SystemConfig {
         
         return defaultZipUploadFilesLimit; 
     }
-    
+
+    /**
+     * Session timeout, in minutes.
+     * (default value provided)
+     */
+    public int getLoginSessionTimeout() {
+        return getIntLimitFromStringOrDefault(
+                settingsService.getValueForKey(SettingsServiceBean.Key.LoginSessionTimeout),
+                defaultLoginSessionTimeout);
+    }
+
     /*
     `   the number of files the GUI user is allowed to upload in one batch, 
         via drag-and-drop, or through the file select dialog

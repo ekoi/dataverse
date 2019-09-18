@@ -379,7 +379,13 @@ public class SettingsServiceBean {
         /**
          * DANS addition for the Bridge
          */
-        DataverseBridgeConf;
+        DataverseBridgeConf,
+
+        /**
+         * Lifespan, in minutes, of a login user session
+         * (both DataverseSession and the underlying HttpSession)
+         */
+        LoginSessionTimeout;
 
         @Override
         public String toString() {
