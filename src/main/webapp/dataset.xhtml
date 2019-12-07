@@ -493,7 +493,7 @@
                                                                         <div>
                                                                             <ui:repeat value="#{compoundValue.displayValueMap.entrySet().toArray()}" var="cvPart" varStatus="partStatus">
                                                                                 <h:outputText value="#{dsf.datasetFieldType.displayFormat} " rendered="${!partStatus.first}"/>
-                                                                                <h:outputText value="#{cvPart.value}"
+                                                                                <h:outputText value="#{fn:replace(cvPart.value, '\\\\n', '&lt;br/&gt;')}"
                                                                                               escape="#{cvPart.key.datasetFieldType.isEscapeOutputText()}"/>
                                                                             </ui:repeat>
                                                                         </div>
