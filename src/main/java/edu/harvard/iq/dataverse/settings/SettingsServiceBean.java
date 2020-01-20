@@ -5,6 +5,7 @@ import edu.harvard.iq.dataverse.actionlogging.ActionLogServiceBean;
 import edu.harvard.iq.dataverse.api.ApiBlockingFilter;
 import edu.harvard.iq.dataverse.util.StringUtil;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -83,13 +84,6 @@ public class SettingsServiceBean {
          * https://wiki.apache.org/solr/HighlightingParameters#hl.fragsize
          */
         SearchHighlightFragmentSize,
-       /**
-        * Domain name specific code for Google Analytics
-        *//**
-        * Domain name specific code for Google Analytics
-        */
-        GoogleAnalyticsCode,
-
         /**
          * Revert to MyData *not* using the Solr "permission documents" which
          * was the behavior in Dataverse 4.2. Starting to use Solr permission
@@ -99,11 +93,6 @@ public class SettingsServiceBean {
          * shouldn't.
          */
         MyDataDoesNotUseSolrPermissionDocs,
-        /**
-         * Experimental: Allow non-public search with a key/token using the
-         * Search API. See also https://github.com/IQSS/dataverse/issues/1299
-         */
-        SearchApiNonPublicAllowed,
         /**
          * In Dataverse 4.7 and earlier, an API token was required to use the
          * Search API. Tokens are no longer required but you can revert to the
@@ -290,6 +279,10 @@ public class SettingsServiceBean {
         */
         StyleCustomizationFile,
         /*
+         Location and name of analytics code file
+        */
+        WebAnalyticsCode,
+        /*
          Location and name of installation logo customization file
         */
         LogoCustomizationFile,
@@ -369,6 +362,34 @@ public class SettingsServiceBean {
          * 
          */
         FilePIDsEnabled,
+
+
+        /**
+         * Indicates if the Handle service is setup to work 'independently' (No communication with the Global Handle Registry)
+         */
+        IndependentHandleService,
+
+        /**
+         * Archiving can be configured by providing an Archiver class name (class must extend AstractSubmitToArchiverCommand)
+         * and a list of settings that should be passed to the Archiver.
+         * Note: 
+         * Configuration may also require adding Archiver-specific jvm-options (i.e. for username and password) in glassfish.
+         * 
+         * To automate the submission of an archival copy step as part of publication, a post-publication workflow must also be configured.
+         * 
+         * For example:
+         * ArchiverClassName - "edu.harvard.iq.dataverse.engine.command.impl.DPNSubmitToArchiveCommand"
+         * ArchiverSettings - "DuraCloudHost, DuraCloudPort, DuraCloudContext"
+         * 
+         * Note: Dataverse must be configured with values for these dynamically defined settings as well, e.g. 
+         * 
+         * DuraCloudHost , eg. "qdr.duracloud.org", a non-null value enables submission
+         * DuraCloudPort, default is 443
+         * DuraCloudContext, default is "durastore"
+         */
+        
+        ArchiverClassName,
+        ArchiverSettings,
         /**
          * A comma-separated list of roles for which new dataverses should inherit the
          * corresponding role assignments from the parent dataverse. Also affects
@@ -381,8 +402,18 @@ public class SettingsServiceBean {
          */
         DataverseBridgeConf,
 
+        /** Make Data Count Logging and Display */
+        MDCLogPath, 
+        DisplayMDCMetrics,
+
         /**
-         * Lifespan, in minutes, of a login user session
+         * Allow CORS flag (true or false). It is true by default
+         *
+         */
+        AllowCors, 
+        
+        /**
+         * Lifespan, in minutes, of a login user session 
          * (both DataverseSession and the underlying HttpSession)
          */
         LoginSessionTimeout;
@@ -405,8 +436,14 @@ public class SettingsServiceBean {
      * @return the actual setting, or {@code null}.
      */
     public String get( String name ) {
-        Setting s = em.find( Setting.class, name );
-        return (s!=null) ? s.getContent() : null;
+        List<Setting> tokens = em.createNamedQuery("Setting.findByName", Setting.class)
+                .setParameter("name", name )
+                .getResultList();
+        String val = null;
+        if(tokens.size() > 0) {
+            val = tokens.get(0).getContent();
+        }
+        return (val!=null) ? val : null;
     }
     
     /**
@@ -459,16 +496,71 @@ public class SettingsServiceBean {
         String val = get(name);
         return (val!=null) ? val : defaultValue;
     }
+
+    public String get(String name, String lang, String defaultValue ) {
+        List<Setting> tokens = em.createNamedQuery("Setting.findByNameAndLang", Setting.class)
+                .setParameter("name", name )
+                .setParameter("lang", lang )
+                .getResultList();
+        String val = null;
+        if(tokens.size() > 0) {
+            val = tokens.get(0).getContent();
+        }
+        return (val!=null) ? val : defaultValue;
+    }
     
     public String getValueForKey( Key key, String defaultValue ) {
         return get( key.toString(), defaultValue );
     }
+
+    public String getValueForKey( Key key, String lang, String defaultValue ) {
+        return get( key.toString(), lang, defaultValue );
+    }
      
     public Setting set( String name, String content ) {
-        Setting s = new Setting( name, content );
+        Setting s = null; 
+        
+        List<Setting> tokens = em.createNamedQuery("Setting.findByName", Setting.class)
+                .setParameter("name", name )
+                .getResultList();
+        
+        if(tokens.size() > 0) {
+            s = tokens.get(0);
+        }
+        
+        if (s == null) {
+            s = new Setting( name, content );
+        } else {
+            s.setContent(content);
+        }
+        
         s = em.merge(s);
         actionLogSvc.log( new ActionLogRecord(ActionLogRecord.ActionType.Setting, "set")
                             .setInfo(name + ": " + content));
+        return s;
+    }
+
+    public Setting set( String name, String lang, String content ) {
+        Setting s = null; 
+        
+        List<Setting> tokens = em.createNamedQuery("Setting.findByNameAndLang", Setting.class)
+                .setParameter("name", name )
+                .setParameter("lang", lang )
+                .getResultList();
+        
+        if(tokens.size() > 0) {
+            s = tokens.get(0);
+        }
+        
+        if (s == null) {
+            s = new Setting( name, lang, content );
+        } else {
+            s.setContent(content);
+        }
+        
+        em.merge(s);
+        actionLogSvc.log( new ActionLogRecord(ActionLogRecord.ActionType.Setting, "set")
+                .setInfo(name + ": " +lang + ": " + content));
         return s;
     }
     
@@ -505,6 +597,15 @@ public class SettingsServiceBean {
                             .setInfo(name));
         em.createNamedQuery("Setting.deleteByName")
                 .setParameter("name", name)
+                .executeUpdate();
+    }
+
+    public void delete( String name, String lang ) {
+        actionLogSvc.log( new ActionLogRecord(ActionLogRecord.ActionType.Setting, "delete")
+                .setInfo(name));
+        em.createNamedQuery("Setting.deleteByNameAndLang")
+                .setParameter("name", name)
+                .setParameter("lang", lang)
                 .executeUpdate();
     }
     

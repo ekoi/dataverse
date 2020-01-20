@@ -11,6 +11,7 @@ import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Transient;
 
 /**
  * A specification or definition for how an external tool is intended to
@@ -23,8 +24,11 @@ public class ExternalTool implements Serializable {
     public static final String DISPLAY_NAME = "displayName";
     public static final String DESCRIPTION = "description";
     public static final String TYPE = "type";
+    public static final String SCOPE = "scope";
     public static final String TOOL_URL = "toolUrl";
     public static final String TOOL_PARAMETERS = "toolParameters";
+    public static final String CONTENT_TYPE = "contentType";
+    public static final String HAS_PREVIEW_MODE = "hasPreviewMode";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,6 +55,13 @@ public class ExternalTool implements Serializable {
     @Enumerated(EnumType.STRING)
     private Type type;
 
+    /**
+     * Whether the tool operates at the dataset or file level.
+     */
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Scope scope;
+
     @Column(nullable = false)
     private String toolUrl;
 
@@ -60,6 +71,29 @@ public class ExternalTool implements Serializable {
      */
     @Column(nullable = false)
     private String toolParameters;
+
+    /**
+     * The file content type the tool works on. For tabular files, the type
+     * text/tab-separated-values should be sent
+     */
+    @Column(nullable = true, columnDefinition = "TEXT")
+    private String contentType;
+    
+    @Column(nullable = false)
+    private boolean hasPreviewMode;   
+
+
+    
+    @Transient
+    private boolean worldMapTool;
+    
+    public boolean isWorldMapTool() {
+        return worldMapTool;
+    }
+
+    public void setWorldMapTool(boolean worldMapTool) {
+        this.worldMapTool = worldMapTool;
+    }
 
     /**
      * This default constructor is only here to prevent this error at
@@ -75,12 +109,26 @@ public class ExternalTool implements Serializable {
     public ExternalTool() {
     }
 
-    public ExternalTool(String displayName, String description, Type type, String toolUrl, String toolParameters) {
+    public ExternalTool(String displayName, String description, Type type, Scope scope, String toolUrl, String toolParameters, String contentType) {
         this.displayName = displayName;
         this.description = description;
         this.type = type;
+        this.scope = scope;
         this.toolUrl = toolUrl;
         this.toolParameters = toolParameters;
+        this.contentType = contentType;
+        this.hasPreviewMode = false;
+    }
+    
+    public ExternalTool(String displayName, String description, Type type, Scope scope, String toolUrl, String toolParameters, String contentType, boolean hasPreviewMode) {
+        this.displayName = displayName;
+        this.description = description;
+        this.type = type;
+        this.scope = scope;
+        this.toolUrl = toolUrl;
+        this.toolParameters = toolParameters;
+        this.contentType = contentType;
+        this.hasPreviewMode = hasPreviewMode;
     }
 
     public enum Type {
@@ -103,6 +151,34 @@ public class ExternalTool implements Serializable {
                 }
             }
             throw new IllegalArgumentException("Type must be one of these values: " + Arrays.asList(Type.values()) + ".");
+        }
+
+        @Override
+        public String toString() {
+            return text;
+        }
+    }
+
+    public enum Scope {
+
+        DATASET("dataset"),
+        FILE("file");
+
+        private final String text;
+
+        private Scope(final String text) {
+            this.text = text;
+        }
+
+        public static Scope fromString(String text) {
+            if (text != null) {
+                for (Scope scope : Scope.values()) {
+                    if (text.equals(scope.text)) {
+                        return scope;
+                    }
+                }
+            }
+            throw new IllegalArgumentException("Scope must be one of these values: " + Arrays.asList(Scope.values()) + ".");
         }
 
         @Override
@@ -139,6 +215,10 @@ public class ExternalTool implements Serializable {
         return type;
     }
 
+    public Scope getScope() {
+        return scope;
+    }
+
     public String getToolUrl() {
         return toolUrl;
     }
@@ -155,14 +235,39 @@ public class ExternalTool implements Serializable {
         this.toolParameters = toolParameters;
     }
 
+    public String getContentType() {
+        return this.contentType;
+    }
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
+    }
+    
+    public boolean getHasPreviewMode() {
+        return hasPreviewMode;
+    }
+
+    public void setHasPreviewMode(boolean hasPreviewMode) {
+        this.hasPreviewMode = hasPreviewMode;
+    }
+    
     public JsonObjectBuilder toJson() {
         JsonObjectBuilder jab = Json.createObjectBuilder();
         jab.add("id", getId());
         jab.add(DISPLAY_NAME, getDisplayName());
         jab.add(DESCRIPTION, getDescription());
         jab.add(TYPE, getType().text);
+        jab.add(SCOPE, getScope().text);
         jab.add(TOOL_URL, getToolUrl());
         jab.add(TOOL_PARAMETERS, getToolParameters());
+        if (getContentType() != null) {
+            jab.add(CONTENT_TYPE, getContentType());
+        }
+        if (getHasPreviewMode()) {
+            jab.add(HAS_PREVIEW_MODE, getHasPreviewMode());
+        } else {
+            
+        }
         return jab;
     }
 
@@ -173,8 +278,16 @@ public class ExternalTool implements Serializable {
         // various REST APIs. For example, "Variable substitutions will be made when a variable is named in {brackets}."
         // from https://swagger.io/specification/#fixed-fields-29 but that's for URLs.
         FILE_ID("fileId"),
+        FILE_PID("filePid"),
         SITE_URL("siteUrl"),
-        API_TOKEN("apiToken");
+        API_TOKEN("apiToken"),
+        // datasetId is the database id
+        DATASET_ID("datasetId"),
+        // datasetPid is the DOI or Handle
+        DATASET_PID("datasetPid"),
+        DATASET_VERSION("datasetVersion"),
+        FILE_METADATA_ID("fileMetadataId"),
+        LOCALE_CODE("localeCode");
 
         private final String text;
         private final String START = "{";

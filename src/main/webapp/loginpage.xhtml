@@ -4,6 +4,7 @@
       xmlns:f="http://java.sun.com/jsf/core"
       xmlns:ui="http://java.sun.com/jsf/facelets"
       xmlns:o="http://omnifaces.org/ui"
+      xmlns:of="http://omnifaces.org/functions"
       xmlns:p="http://primefaces.org/ui"
       xmlns:fn="http://java.sun.com/jsp/jstl/functions"
       xmlns:jsf="http://xmlns.jcp.org/jsf">
@@ -13,6 +14,7 @@
     <h:body>
         <f:metadata>
             <f:viewParam name="redirectPage" value="#{LoginPage.redirectPage}"/>
+            <f:viewAction action="#{dataverseSession.updateLocaleInViewRoot}"/>
             <f:viewAction action="#{LoginPage.init}"/>
         </f:metadata>
         <ui:composition template="/dataverse_template.xhtml">
@@ -66,6 +68,14 @@
                                                     escape="false">
                                         <f:param value="#{settingsWrapper.guidesBaseUrl}" />
                                         <f:param value="#{systemConfig.guidesVersion}" />
+                                    </h:outputFormat>
+                                </p>
+                            </div>
+                            
+                            <div id="signUpLink">
+                                <p class="help-block margin-top">
+                                    <h:outputFormat value="#{bundle['login.signup.blurb']}" escape="false">
+                                        <f:param value="#{dataverseHeaderFragment.getSignupUrl(navigationWrapper.redirectPage)}"/>
                                     </h:outputFormat>
                                 </p>
                             </div>

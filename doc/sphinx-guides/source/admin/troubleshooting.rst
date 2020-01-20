@@ -3,17 +3,57 @@
 Troubleshooting
 ===============
 
-This new (as of v.4.6) section of the Admin guide is for tips on how to diagnose and fix system problems. 
+Sometimes Dataverse users get into trouble. Sometimes Dataverse itself gets into trouble. If something has gone wrong, this section is for you.
 
 .. contents:: Contents:
 	:local:
 
+Using Dataverse APIs to Troubleshoot and Fix Problems
+-----------------------------------------------------
+
+See the :doc:`/api/intro` section of the API Guide for a high level overview of Dataverse APIs. Below are listed problems that support teams might encounter that can be handled via API (sometimes only via API).
+
+A Dataset Is Locked And Cannot Be Edited or Published
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It's normal for the ingest process described in the :doc:`/user/tabulardataingest/ingestprocess` section of the User Guide to take some time but if hours or days have passed and the dataset is still locked, you might want to inspect the locks and consider deleting some or all of them.
+
+See :doc:`dataverses-datasets`.
+
+Someone Created Spam Datasets and I Need to Delete Them
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Depending on how open your installation of Dataverse is to the general public creating datasets, you may sometimes need to deal with spam datasets.
+
+Look for "destroy" in the :doc:`/api/native-api` section of the API Guide.
+
+A User Needs Their Account to Be Converted From Institutional (Shibboleth), ORCID, Google, or GitHub to Something Else
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+See :ref:`converting-shibboleth-users-to-local` and :ref:`converting-oauth-users-to-local`.
+
+.. _troubleshooting-glassfish:
+
 Glassfish
 ---------
 
-``server.log`` is the main place to look when you encounter problems. Hopefully an error message has been logged. If there's a stack trace, it may be of interest to developers, especially they can trace line numbers back to a tagged version.
+.. _glassfish-log:
 
-For debugging purposes, you may find it helpful to increase logging levels as mentioned in the :doc:`/developers/debugging` section of the Developer Guide.
+Finding the Glassfish Log File
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``/usr/local/glassfish4/glassfish/domains/domain1/logs/server.log`` is the main place to look when you encounter problems (assuming you installed Glassfish in the default directory). Hopefully an error message has been logged. If there's a stack trace, it may be of interest to developers, especially they can trace line numbers back to a tagged version or commit. Send more of the stack trace (the entire file if possible) to developers who can help (see "Getting Help", below) and be sure to say which version of Dataverse you are running.
+
+.. _increase-glassfish-logging:
+
+Increasing Glassfish Logging
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For debugging purposes, you may find it helpful to temporarily increase logging levels. Here's an example of increasing logging for the Java class behind the "datasets" API endpoints:
+
+``./asadmin set-log-levels edu.harvard.iq.dataverse.api.Datasets=FINE``
+
+For more on setting log levels, see the :doc:`/developers/debugging` section of the Developer Guide.
 
 Our guides focus on using the command line to manage Glassfish but you might be interested in an admin GUI at http://localhost:4848
 
@@ -58,3 +98,26 @@ followed by an Exception stack trace with these lines in it:
 Make sure you install the correct version of the driver. For example, if you are running the version 9.3 of PostgreSQL, make sure you have the driver postgresql-9.3-1104.jdbc4.jar in your :fixedwidthplain:`<GLASSFISH FOLDER>/glassfish/lib` directory. Go `here <https://jdbc.postgresql.org/download.html>`_
 to download the correct version of the driver. If you have an older driver in glassfish/lib, make sure to remove it, replace it with the new version and restart Glassfish. (You may need to remove the entire contents of :fixedwidthplain:`<GLASSFISH FOLDER>/glassfish/domains/domain1/generated` before you start Glassfish). 
 
+
+Constraint Violations Issues
+----------------------------
+
+In real life production use, it may be possible to end up in a situation where some values associated with the datasets in your database are no longer valid under the constraints enforced by the latest version of Dataverse. This is not very likely to happen, but if it does, the symptomps will be as follows: Some datasets can no longer be edited, long exception stack traces logged in the Glassfish server log, caused by::
+
+   javax.validation.ConstraintViolationException: 
+   Bean Validation constraint(s) violated while executing Automatic Bean Validation on callback event:'preUpdate'. 
+   Please refer to embedded ConstraintViolations for details.
+
+(contrary to what the message suggests, there are no specific "details" anywhere in the stack trace that would explain what values violate which constraints)  
+
+To identifiy the specific invalid values in the affected datasets, or to check all the datasets in the Dataverse for constraint violations, see :ref:`Dataset Validation <dataset-validation-api>` in the :doc:`/api/native-api` section of the User Guide.
+
+Many Files with a File Type of "Unknown", "Application", or "Binary"
+--------------------------------------------------------------------
+
+From the home page of a Dataverse installation you can get a count of files by file type by clicking "Files" and then scrolling down to "File Type". If you see a lot of files that are "Unknown", "Application", or "Binary" you can have Dataverse attempt to redetect the file type by using the :ref:`Redetect File Type <redetect-file-type>` API endpoint.
+
+Getting Help
+------------
+
+If the troubleshooting advice above didn't help, contact any of the support channels mentioned in the :ref:`support` section of the Installation Guide.

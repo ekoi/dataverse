@@ -42,7 +42,7 @@ public class MetricsDans extends AbstractApiBean {
 
         String metricName = createMetricName(topLevelDvAlias,"dataverses");
         try {
-            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
             if (null == jsonArrayString) { //run query and save
                 List<Integer> releasedDataverse = metricsSvc.getChildrenIdsRecursively(topLevelDvAlias, "Dataverse", DatasetVersion.VersionState.RELEASED);
                 String pubDv = metricsSvc.getDataversesNameByIds(releasedDataverse).stream().map(n -> {String s = (String)n[0] + "#" + (String)n[1] + "#" + (String)n[2]; return s;} ).collect(Collectors.joining("|"));
@@ -50,7 +50,7 @@ public class MetricsDans extends AbstractApiBean {
                 String drafDv = metricsSvc.getDataversesNameByIds(draftDataverse).stream().map(n -> {String s = (String)n[0] + "#" + (String)n[1] + "#" + (String)n[2]; return s;} ).collect(Collectors.joining("|"));
                 JsonArrayBuilder jsonArrayBuilder = versionStateSizeToJson(releasedDataverse.size(), pubDv, draftDataverse.size(), drafDv);
                 jsonArrayString = jsonArrayBuilder.build().toString();
-                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), null, null, jsonArrayString));
             }
             return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
@@ -67,12 +67,12 @@ public class MetricsDans extends AbstractApiBean {
         String metricName = createMetricName(topLevelDvAlias,"dataverses/addedOverTime");
         logger.info(metricName);
        try {
-                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
 
                 if (null == jsonArrayString) { //run query and save
                     JsonArrayBuilder jsonArrayBuilder = dataversesAllYearsToJson(metricsSvc.dataversesAllTime(topLevelDvAlias));
                     jsonArrayString = jsonArrayBuilder.build().toString();
-                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), null, null, jsonArrayString));
                 }
                 return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
             } catch (Exception ex) {
@@ -88,11 +88,11 @@ public class MetricsDans extends AbstractApiBean {
 
         String metricName = createMetricName(topLevelDvAlias,"dataverses/byCategory");
         try {
-            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
             if (null == jsonArrayString) { //run query and save
                 JsonArrayBuilder jsonArrayBuilder = MetricsUtil.dataversesByCategoryToJson(metricsSvc.dataversesByCategory(topLevelDvAlias));
                 jsonArrayString = jsonArrayBuilder.build().toString();
-                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), null, null, jsonArrayString));
             }
             return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
@@ -109,7 +109,7 @@ public class MetricsDans extends AbstractApiBean {
 
         String metricName = createMetricName(topLevelDvAlias, "datasets");
         try {
-            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
             if (null == jsonArrayString) { //run query and save
                 List<Integer> publishedDatasets = metricsSvc.getListOfDatasetsByStatusAndByDvAlias(topLevelDvAlias, true);
                 String pubDs = metricsSvc.getDatasetsIdentifierByIds(publishedDatasets).stream().map(n -> {
@@ -129,7 +129,7 @@ public class MetricsDans extends AbstractApiBean {
                 ).collect(Collectors.joining("|"));
                 JsonArrayBuilder jsonArrayBuilder = versionStateSizeToJson(publishedDatasets.size(), pubDs, draftDatasets.size(), draftDs);
                 jsonArrayString = jsonArrayBuilder.build().toString();
-                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), null, null, jsonArrayString));
             }
             return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
@@ -145,11 +145,11 @@ public class MetricsDans extends AbstractApiBean {
 
         String metricName = createMetricName(topLevelDvAlias,"datasets/bySubject");
         try {
-            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
             if (null == jsonArrayString) { //run query and save
                 JsonArrayBuilder jsonArrayBuilder = datasetsBySubjectToJson(metricsSvc.datasetsBySubject(topLevelDvAlias));
                 jsonArrayString = jsonArrayBuilder.build().toString();
-                metricsSvc.save(new Metric(metricName, jsonArrayString), false);
+                metricsSvc.save(new Metric(metricName, null, null, jsonArrayString));
             }
             return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
@@ -165,11 +165,11 @@ public class MetricsDans extends AbstractApiBean {
 
         String metricName = createMetricName(topLevelDvAlias,"datasets/addedOverTime");
         try {
-                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+                String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
                 if (null == jsonArrayString) { //run query and save
                     JsonArrayBuilder jsonArrayBuilder = datasetsAllYearsToJson(metricsSvc.datasetsAllTime(topLevelDvAlias));
                     jsonArrayString = jsonArrayBuilder.build().toString();
-                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                    metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), null, null, jsonArrayString));
                 }
                 return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
             } catch (Exception ex) {
@@ -185,11 +185,11 @@ public class MetricsDans extends AbstractApiBean {
 
         String metricName = createMetricName(topLevelDvAlias, "files");
         try {
-            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
             if (null == jsonArrayString) { //run query and save
                 JsonArrayBuilder jsonArrayBuilder = filesAllYearsToJson(metricsSvc.filesAllTime(topLevelDvAlias), "added");
                 jsonArrayString = jsonArrayBuilder.build().toString();
-                metricsSvc.save(new Metric(metricName, jsonArrayString), false);
+                metricsSvc.save(new Metric(metricName, null, null, jsonArrayString));
             }
             return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
@@ -205,12 +205,12 @@ public class MetricsDans extends AbstractApiBean {
 
         String metricName = createMetricName(topLevelDvAlias, "tree");
         try {
-            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
             if (null == jsonArrayString) { //run query and save
                 JsonObjectBuilder job = Json.createObjectBuilder();
                 job = dataversesTreeToJson(metricsSvc.getDataversesChildrenRecursively(topLevelDvAlias));
                 jsonArrayString = job.build().toString();
-                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), null, null, jsonArrayString));
             }
             return allowCors(ok(MetricsUtil.stringToJsonObjectBuilder(jsonArrayString)));
         } catch (Exception ex) {
@@ -226,7 +226,7 @@ public class MetricsDans extends AbstractApiBean {
 
         String metricName = createMetricName(topLevelDvAlias, "dataverses-report");
         try {
-            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
             if (null == jsonArrayString) { //run query and save
                 JsonObjectBuilder job = Json.createObjectBuilder();
                 List<Object[]> dvList = metricsSvc.dataversesByAlias(topLevelDvAlias);
@@ -249,7 +249,7 @@ public class MetricsDans extends AbstractApiBean {
                 });
                 JsonArrayBuilder jsonArrayBuilder = dataversesReportToJson(dvReports);
                 jsonArrayString = jsonArrayBuilder.build().toString();
-                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), null, null, jsonArrayString));
             }
             return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
@@ -265,7 +265,7 @@ public class MetricsDans extends AbstractApiBean {
 
         String metricName = createMetricName(topLevelDvAlias, "datasets-report");
         try {
-            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
             if (null == jsonArrayString) { //run query and save
                 JsonObjectBuilder job = Json.createObjectBuilder();
                 List<Object[]> dvList = metricsSvc.dataversesByAlias(topLevelDvAlias);
@@ -285,7 +285,7 @@ public class MetricsDans extends AbstractApiBean {
                 });
                 JsonArrayBuilder jsonArrayBuilder = datasetsReportToJson(dsReports);
                 jsonArrayString = jsonArrayBuilder.build().toString();
-                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), null, null, jsonArrayString));
             }
             return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {
@@ -301,11 +301,11 @@ public class MetricsDans extends AbstractApiBean {
 
         String metricName = createMetricName(topLevelDvAlias, "downloads");
         try {
-            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString());
+            String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
             if (null == jsonArrayString) { //run query and save
                 JsonArrayBuilder jsonArrayBuilder = filesAllYearsToJson(metricsSvc.downloadsAllTime(topLevelDvAlias), "download");
                 jsonArrayString = jsonArrayBuilder.build().toString();
-                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), jsonArrayString), false);
+                metricsSvc.save(new Metric(metricName + "_" + metricsSvc.getTodayAsString(), null, null, jsonArrayString));
             }
             return allowCors(ok(MetricsUtil.stringToJsonArrayBuilder(jsonArrayString)));
         } catch (Exception ex) {

@@ -20,6 +20,7 @@ import edu.harvard.iq.dataverse.authorization.providers.oauth2.OAuth2Authenticat
 import edu.harvard.iq.dataverse.authorization.providers.oauth2.impl.GitHubOAuth2AP;
 import edu.harvard.iq.dataverse.authorization.providers.oauth2.impl.GoogleOAuth2AP;
 import edu.harvard.iq.dataverse.authorization.providers.oauth2.impl.OrcidOAuth2AP;
+import edu.harvard.iq.dataverse.authorization.providers.oauth2.impl.MicrosoftOAuth2AP;
 import edu.harvard.iq.dataverse.authorization.providers.shib.ShibAuthenticationProvider;
 import edu.harvard.iq.dataverse.authorization.providers.shib.ShibAuthenticationProviderFactory;
 import edu.harvard.iq.dataverse.authorization.users.ApiToken;
@@ -30,6 +31,7 @@ import edu.harvard.iq.dataverse.passwordreset.PasswordResetData;
 import edu.harvard.iq.dataverse.passwordreset.PasswordResetServiceBean;
 import edu.harvard.iq.dataverse.util.BundleUtil;
 import edu.harvard.iq.dataverse.validation.PasswordValidatorServiceBean;
+import edu.harvard.iq.dataverse.workflows.WorkflowComment;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -52,6 +54,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 import javax.persistence.NonUniqueResultException;
 import javax.persistence.PersistenceContext;
+import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
@@ -301,6 +304,22 @@ public class AuthenticationServiceBean {
         }
     }
     
+    public AuthenticatedUser getAuthenticatedUserWithProvider( String identifier ) {
+        try {
+            AuthenticatedUser authenticatedUser = em.createNamedQuery("AuthenticatedUser.findByIdentifier", AuthenticatedUser.class)
+                    .setParameter("identifier", identifier)
+                    .getSingleResult();
+            AuthenticatedUserLookup aul = em.createNamedQuery("AuthenticatedUserLookup.findByAuthUser", AuthenticatedUserLookup.class)
+                    .setParameter("authUser", authenticatedUser)
+                    .getSingleResult();
+            authenticatedUser.setAuthProviderId(aul.getAuthenticationProviderId());
+            
+            return authenticatedUser;
+        } catch ( NoResultException nre ) {
+            return null;
+        }
+    }
+    
     public AuthenticatedUser getAdminUser() {
         try {
             return em.createNamedQuery("AuthenticatedUser.findAdminUser", AuthenticatedUser.class)
@@ -418,7 +437,7 @@ public class AuthenticationServiceBean {
         try {
             return typedQuery.getSingleResult();
         } catch (NoResultException | NonUniqueResultException ex) {
-            logger.log(Level.INFO, "When looking up API token for {0} caught {1}", new Object[]{au, ex});
+            logger.log(Level.FINE, "When looking up API token for {0} caught {1}", new Object[]{au, ex});
             return null;
         }
     }
@@ -862,14 +881,22 @@ public class AuthenticationServiceBean {
     public List<String> getAuthenticationProviderIdsSorted() {
         GitHubOAuth2AP github = new GitHubOAuth2AP(null, null);
         GoogleOAuth2AP google = new GoogleOAuth2AP(null, null);
+        MicrosoftOAuth2AP microsoft = new MicrosoftOAuth2AP(null, null);
         return Arrays.asList(
                 BuiltinAuthenticationProvider.PROVIDER_ID,
                 ShibAuthenticationProvider.PROVIDER_ID,
                 OrcidOAuth2AP.PROVIDER_ID_PRODUCTION,
                 OrcidOAuth2AP.PROVIDER_ID_SANDBOX,
                 github.getId(),
-                google.getId()
+                google.getId(),
+                microsoft.getId()
         );
+    }
+    
+    public List <WorkflowComment> getWorkflowCommentsByAuthenticatedUser(AuthenticatedUser user){ 
+        Query query = em.createQuery("SELECT wc FROM WorkflowComment wc WHERE wc.authenticatedUser.id = :auid");
+        query.setParameter("auid", user.getId());       
+        return query.getResultList();
     }
 
 }

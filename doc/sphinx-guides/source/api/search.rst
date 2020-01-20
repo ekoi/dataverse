@@ -6,7 +6,7 @@ Search API
 
 The Search API supports the same searching, sorting, and faceting operations as the Dataverse web interface.
 
-Unlike the web interface, this new API is limited to *published* data.
+To search unpublished content, you must pass in an API token as described in the :doc:`auth` section.
 
 The parameters and JSON response are partly inspired by the `GitHub Search API <https://developer.github.com/v3/search/>`_.
 
@@ -24,7 +24,7 @@ Parameters
 ===============  =======  ===========
 Name             Type     Description
 ===============  =======  ===========
-q                string   The search term or terms. Using "title:data" will search only the "title" field. "*" can be used as a wildcard either alone or adjacent to a term (i.e. "bird*"). For example, https://demo.dataverse.org/api/search?q=title:data
+q                string   The search term or terms. Using "title:data" will search only the "title" field. "*" can be used as a wildcard either alone or adjacent to a term (i.e. "bird*"). For example, https://demo.dataverse.org/api/search?q=title:data . For a list of fields to search, please see https://github.com/IQSS/dataverse/issues/2558 (for now).
 type             string   Can be either "dataverse", "dataset", or "file". Multiple "type" parameters can be used to include multiple types (i.e. ``type=dataset&type=file``). If omitted, all types will be returned.  For example, https://demo.dataverse.org/api/search?q=*&type=dataset
 subtree          string   The identifier of the dataverse to which the search should be narrowed. The subtree of this dataverse and all its children will be searched.  Multiple "subtree" parameters can be used to include multiple Dataverses. For example, https://demo.dataverse.org/api/search?q=data&subtree=birds&subtree=cats .
 sort             string   The sort field. Supported values include "name" and "date". See example under "order".
@@ -85,7 +85,11 @@ https://demo.dataverse.org/api/search?q=trees
                     "file_content_type":"image/png",
                     "size_in_bytes":8361,
                     "md5":"0386269a5acb2c57b4eade587ff4db64",
-                    "dataset_citation":"Spruce, Sabrina, 2016, \"Spruce Goose\", http://dx.doi.org/10.5072/FK2/NFSEHG, Root Dataverse, V1"
+                    "file_persistent_id": "doi:10.5072/FK2/XTT5BV/PCCHV7",
+                    "dataset_name": "Dataset One",
+                    "dataset_id": "32",
+                    "dataset_persistent_id": "doi:10.5072/FK2/XTT5BV",
+                    "dataset_citation":"Spruce, Sabrina, 2016, \"Spruce Goose\", http://dx.doi.org/10.5072/FK2/XTT5BV, Root Dataverse, V1"
                 },
                 {
                     "name":"Birds",
@@ -217,6 +221,15 @@ In this example, ``show_relevance=true`` matches per field are shown. Available 
             "count_in_response":2
         }
     }
+
+.. _search-date-range:
+
+Date Range Search Example
+-------------------------
+
+Below is an example of searching across a date range of dataverses, datasets, and files that were published in 2018.
+
+`https://demo.dataverse.org/api/search?q=*&per_page=1000&sort=date&order=asc&q=*&fq=dateSort:[2018-01-01T00\:00\:00Z+TO+2019-01-01T00\:00\:00Z] <https://demo.dataverse.org/api/search?q=*&per_page=1000&sort=date&order=asc&q=*&fq=dateSort:[2018-01-01T00\:00\:00Z+TO+2019-01-01T00\:00\:00Z]>`_
 
 .. _iteration-example:
 

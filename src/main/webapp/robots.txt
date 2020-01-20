@@ -1,39 +1,5 @@
-User-agent: googlebot
-User-agent: google
-User-agent: bing
-User-agent: Bingbot
-Allow: /
-Sitemap: http://dataverse.nl/sitemap.xml
-
-User-agent: Baiduspider 
-User-agent: baiduspider 
-User-agent: Baiduspider+ 
-Disallow: /
-
-User-agent: HTTrack
-Disallow: /
-User-agent: MJ12bot
-Disallow: /     
-User-agent: SemrushBot
-Disallow: /
-User-agent: SemrushBot-SA
-Disallow: /
-User-agent: rogerbot
-Disallow:/ 
-User-agent: dotbot
-Disallow:/ 
-User-agent: AhrefsBot
-Disallow: /
-User-agent: Alexibot
-Disallow: /
-User-agent: SurveyBot
-Disallow: /
-User-agent: Xenu’s
-Disallow: /
-User-agent: Xenu’s Link Sleuth 1.1c
-Disallow: /
-User-agent: BLEXBot
-Disallow: /
-
+# Consult the guide on how to open your Dataverse installation to crawling by 
+# search engine bots: 
+# /guides/installation/config.html#letting-search-engines-crawl-your-installation 
 User-agent: *
 Disallow: /

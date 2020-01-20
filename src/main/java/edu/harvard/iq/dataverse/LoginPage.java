@@ -160,10 +160,7 @@ public class LoginPage implements java.io.Serializable {
             logger.info("Credential list is null!");
             return null;
         }
-        for ( FilledCredential fc : filledCredentialsList ) {
-            if(fc.getValue()==null || fc.getValue().isEmpty()){
-                JH.addMessage(FacesMessage.SEVERITY_ERROR, BundleUtil.getStringFromBundle("login."+fc.getCredential().getKey()));
-            }
+        for ( FilledCredential fc : filledCredentialsList ) {       
             authReq.putCredential(fc.getCredential().getKey(), fc.getValue());
         }
         authReq.setIpAddress( dvRequestService.getDataverseRequest().getSourceAddress() );
@@ -172,10 +169,7 @@ public class LoginPage implements java.io.Serializable {
             logger.log(Level.FINE, "User authenticated: {0}", r.getEmail());
             session.setUser(r);
             session.configureSessionTimeout();
-            //HttpSession httpSession = (HttpSession) FacesContext.getCurrentInstance().getExternalContext().getSession(false);
-            //logger.log(Level.INFO, "logged in as user "+r.getName()+", jsession id: "+httpSession.getId()+" (setting the lifespan of the session to 1 hour)");
-            //httpSession.setMaxInactiveInterval(systemConfig.getLoginSessionTimeout() * 60); // session timeout, in seconds
-
+            
             if ("dataverse.xhtml".equals(redirectPage)) {
                 redirectPage = redirectToRoot();
             }
