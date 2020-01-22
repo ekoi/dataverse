@@ -84,7 +84,7 @@
                                 <h:outputText value="#{bundle['header.support']}"/>
                             </h:outputLink>
                         </li>
-                    <ui:fragment/>
+                    </ui:fragment>
                         <ui:fragment rendered="#{empty settingsWrapper.get(':NavbarSupportUrl')}">
                             <o:form useRequestURI="true" class="navbar-form navbar-left navbar-form-link">
                                 <p:commandLink oncomplete="PF('contactForm').show()" update=":contactDialog" actionListener="#{sendFeedbackDialog.initUserInput}">
