@@ -290,6 +290,8 @@ public class DatasetPage implements java.io.Serializable {
     private String protocol = "";
     private String authority = "";
     private String customFields="";
+
+    // DANS bridge archiving
     private boolean dataverseBridgeEnabled;
     private String swordGroupAlias;
     private String darName;
@@ -1856,7 +1858,7 @@ public class DatasetPage implements java.io.Serializable {
             }
 
             // Is the Dataset harvested?
-            
+
             if (dataset.isHarvested()) {
                 // if so, we'll simply forward to the remote URL for the original
                 // source of this harvested dataset:
@@ -2055,6 +2057,10 @@ public class DatasetPage implements java.io.Serializable {
                 break;
             }
         }
+
+        // DANS Bridge archiving
+        initBridgeArchiving();
+
         //Show ingest success message if refresh forces a page reload after ingest success
         //This is needed to display the explore buttons (the fileDownloadHelper needs to be reloaded via page 
         if (showIngestSuccess) {
@@ -2070,7 +2076,75 @@ public class DatasetPage implements java.io.Serializable {
         
         return null;
     }
-    
+
+    /** initialise the DANS Bridge archiving option */
+    private void initBridgeArchiving() {
+        List<DatasetVersion> dvs = dataset.getVersions();
+        for (DatasetVersion dv:dvs) {
+            if (dv.getDarNote() != null) {
+                displayArchivedColumn = true;
+                break;
+            }
+        }
+        logger.info("Bridge archiving button related processing");
+        if (isSessionUserAuthenticated() && workingVersion.isReleased()
+                && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
+            logger.info("Check roles for bridge");
+            RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
+            if (!isUserHasAdminRole(rs))
+                return;// null;
+            logger.info("Processing bridge settings");
+            darNameList = new ArrayList<>();
+            DataverseBridge dbd = new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
+            DataverseBridge.DataverseBridgeSetting dataverseBridgeSetting = dbd.getDataverseBridgeSetting();
+            List<DataverseBridge.DarSetting> darSettingList = dataverseBridgeSetting.getDarSettings();
+            if (darSettingList.isEmpty()) {
+                logger.info("No bridge archives found in settings");
+                swordGroupAlias = null;
+            } else if (darSettingList.size() == 1) {
+                logger.info("One bridge archive found in settings");
+                DataverseBridge.DarSetting darSetting = darSettingList.get(0);
+                swordGroupAlias = getSwordUserGroupAlias(rs, darSetting.getUserGroups());
+                DataverseBridge.DarUser darUser = darSetting.getDarUsers().stream().filter(j-> j.getGroupName().equals(swordGroupAlias)).findAny().orElse(null);
+                if (darUser != null) {
+                    darName = darSetting.getDarName();
+                    darNameList.add(darSetting.getDarName());
+                    darUsername = darUser.getDarUsername();
+                    darPassword = darUser.getDarPassword();
+                    darUserAffiliation = darUser.getDarUsernameAffiliation();
+                }
+            } else {
+                logger.info("Several bridge archives found in settings");
+                List<String> userGroupList = dataverseBridgeSetting.getDarSettings().stream().map(x -> x.getUserGroups()).flatMap(
+                        Collection::stream).collect(Collectors.toList());
+                swordGroupAlias = getSwordUserGroupAlias(rs, userGroupList);
+            }
+            dataverseBridgeEnabled = (swordGroupAlias != null);
+            logger.info("Bridge Sword group alias found: " + swordGroupAlias.toString());
+            if (dataverseBridgeEnabled) {
+                logger.info("Bridge is initially enabled");
+                for (DatasetVersion dv:dvs) {
+                    String darNote = dv.getDarNote();
+                    if (darNote != null && (darNote.equals(DataverseBridge.StateEnum.INVALID.toString())
+                            || darNote.equals(DataverseBridge.StateEnum.FAILED.toString())
+                            || darNote.equals(DataverseBridge.StateEnum.REJECTED.toString()))){
+                        dataverseBridgeEnabled = false;
+                        logger.info("Bridge is disabled because of failed archiving");
+                        break;
+                    }
+                }
+            }
+
+            if (dataverseBridgeEnabled && workingVersion.getDarNote() != null && workingVersion.getDarNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
+                String darName = workingVersion.getDarNote().split("@")[1];
+                String dvBaseMetadataUrl = dataverseBridgeSetting.getMetadataUrl();
+                DataverseBridge.StateEnum state = dbd.checkArchivingProgress(dvBaseMetadataUrl ,persistentId, workingVersion.getFriendlyVersionNumber(), darName);
+                logger.info("Archiving state of '" + persistentId + "': " + state);
+            }
+        }
+
+    }
+
     private Boolean fileTreeViewRequired = null; 
     
     public boolean isFileTreeViewRequired() {
@@ -2148,6 +2222,7 @@ public class DatasetPage implements java.io.Serializable {
                     currentNode.getChildren().add(createFileTreeNode(fileMetadata, currentNode));
                 } else {
                     // no node for this folder yet - need to create!
+
                     String[] subfolders = folder.split("/");
                     int level = 0;
                     currentNode = filesTreeRoot;
@@ -2182,64 +2257,6 @@ public class DatasetPage implements java.io.Serializable {
             }
         }
 
-        /** DANS Bridge archiving code below */
-
-        List<DatasetVersion> dvs = dataset.getVersions();
-        for (DatasetVersion dv:dvs) {
-            if (dv.getDarNote() != null) {
-                displayArchivedColumn = true;
-                break;
-            }
-        }
-        if (isSessionUserAuthenticated() && workingVersion.isReleased()
-                && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
-            RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
-            if (!isUserHasAdminRole(rs))
-                return;
-            darNameList = new ArrayList<>();
-            DataverseBridge dbd = new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
-            DataverseBridge.DataverseBridgeSetting dataverseBridgeSetting = dbd.getDataverseBridgeSetting();
-            List<DataverseBridge.DarSetting> darSettingList = dataverseBridgeSetting.getDarSettings();
-            if (darSettingList.isEmpty()) {
-                logger.info("Disable the archive button.");
-                swordGroupAlias = null;
-            } else if (darSettingList.size() == 1) {
-                DataverseBridge.DarSetting darSetting = darSettingList.get(0);
-                swordGroupAlias = getSwordUserGroupAlias(rs, darSetting.getUserGroups());
-                DataverseBridge.DarUser darUser = darSetting.getDarUsers().stream().filter(j-> j.getGroupName().equals(swordGroupAlias)).findAny().orElse(null);
-                if (darUser != null) {
-                    darName = darSetting.getDarName();
-                    darNameList.add(darSetting.getDarName());
-                    darUsername = darUser.getDarUsername();
-                    darPassword = darUser.getDarPassword();
-                    darUserAffiliation = darUser.getDarUsernameAffiliation();
-                }
-            } else {
-                List<String> userGroupList = dataverseBridgeSetting.getDarSettings().stream().map(x -> x.getUserGroups()).flatMap(
-                    Collection::stream).collect(Collectors.toList());
-                swordGroupAlias = getSwordUserGroupAlias(rs, userGroupList);
-            }
-            dataverseBridgeEnabled = (swordGroupAlias != null);
-
-            if (dataverseBridgeEnabled) {
-                for (DatasetVersion dv:dvs) {
-                    String darNote = dv.getDarNote();
-                    if (darNote != null && (darNote.equals(DataverseBridge.StateEnum.INVALID.toString())
-                            || darNote.equals(DataverseBridge.StateEnum.FAILED.toString())
-                            || darNote.equals(DataverseBridge.StateEnum.REJECTED.toString()))){
-                        dataverseBridgeEnabled = false;
-                        break;
-                    }
-                }
-            }
-
-            if (dataverseBridgeEnabled && workingVersion.getDarNote() != null && workingVersion.getDarNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
-                String darName = workingVersion.getDarNote().split("@")[1];
-                String dvBaseMetadataUrl = dataverseBridgeSetting.getMetadataUrl();
-                DataverseBridge.StateEnum state = dbd.checkArchivingProgress(dvBaseMetadataUrl ,persistentId, workingVersion.getFriendlyVersionNumber(), darName);
-                logger.info("Archiving state of '" + persistentId + "': " + state);
-            }
-        }
         folderMap = null;
 
     }
@@ -2332,6 +2349,7 @@ public class DatasetPage implements java.io.Serializable {
     public boolean isHasTabular() {
         return hasTabular;
     }
+
 
     public boolean isReadOnly() {
         return readOnly; 
