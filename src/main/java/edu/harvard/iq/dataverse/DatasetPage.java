@@ -2086,23 +2086,23 @@ public class DatasetPage implements java.io.Serializable {
                 break;
             }
         }
-        logger.info("Bridge archiving button related processing");
+        logger.fine("Bridge archiving button related processing");
         if (isSessionUserAuthenticated() && workingVersion.isReleased()
                 && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
-            logger.info("Check roles for bridge");
+            logger.fine("Check roles for bridge");
             RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
             if (!isUserHasAdminRole(rs))
                 return;// null;
-            logger.info("Processing bridge settings");
+            logger.fine("Processing bridge settings");
             darNameList = new ArrayList<>();
             DataverseBridge dbd = new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
             DataverseBridge.DataverseBridgeSetting dataverseBridgeSetting = dbd.getDataverseBridgeSetting();
             List<DataverseBridge.DarSetting> darSettingList = dataverseBridgeSetting.getDarSettings();
             if (darSettingList.isEmpty()) {
-                logger.info("No bridge archives found in settings");
+                logger.fine("No bridge archives found in settings");
                 swordGroupAlias = null;
             } else if (darSettingList.size() == 1) {
-                logger.info("One bridge archive found in settings");
+                logger.fine("One bridge archive found in settings");
                 DataverseBridge.DarSetting darSetting = darSettingList.get(0);
                 swordGroupAlias = getSwordUserGroupAlias(rs, darSetting.getUserGroups());
                 DataverseBridge.DarUser darUser = darSetting.getDarUsers().stream().filter(j-> j.getGroupName().equals(swordGroupAlias)).findAny().orElse(null);
@@ -2114,13 +2114,13 @@ public class DatasetPage implements java.io.Serializable {
                     darUserAffiliation = darUser.getDarUsernameAffiliation();
                 }
             } else {
-                logger.info("Several bridge archives found in settings");
+                logger.fine("Several bridge archives found in settings");
                 List<String> userGroupList = dataverseBridgeSetting.getDarSettings().stream().map(x -> x.getUserGroups()).flatMap(
                         Collection::stream).collect(Collectors.toList());
                 swordGroupAlias = getSwordUserGroupAlias(rs, userGroupList);
             }
             dataverseBridgeEnabled = (swordGroupAlias != null);
-            logger.info("Bridge Sword group alias found: " + swordGroupAlias.toString());
+            logger.fine("Bridge Sword group alias found: " + swordGroupAlias.toString());
             if (dataverseBridgeEnabled) {
                 logger.info("Bridge is initially enabled");
                 for (DatasetVersion dv:dvs) {
@@ -2129,7 +2129,7 @@ public class DatasetPage implements java.io.Serializable {
                             || darNote.equals(DataverseBridge.StateEnum.FAILED.toString())
                             || darNote.equals(DataverseBridge.StateEnum.REJECTED.toString()))){
                         dataverseBridgeEnabled = false;
-                        logger.info("Bridge is disabled because of failed archiving");
+                        logger.fine("Bridge is disabled because of failed archiving");
                         break;
                     }
                 }
