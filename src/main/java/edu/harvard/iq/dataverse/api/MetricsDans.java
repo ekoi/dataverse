@@ -65,7 +65,7 @@ public class MetricsDans extends AbstractApiBean {
             return allowCors(error(BAD_REQUEST, "Not found"));
 
         String metricName = createMetricName(topLevelDvAlias,"dataverses/addedOverTime");
-        logger.info(metricName);
+        logger.fine(metricName);
        try {
                 String jsonArrayString = metricsSvc.returnUnexpiredCacheDayBased(metricName, metricsSvc.getTodayAsString(), null);
 
@@ -478,7 +478,7 @@ public class MetricsDans extends AbstractApiBean {
     }
 
     private String createMetricName(String prefix, String path) {
-        logger.info("dvAlias: " + prefix + "\tpath: " + path);
+        logger.fine("dvAlias: " + prefix + "\tpath: " + path);
         if (prefix.length() > 255)//This is needed since the max length of column only 255
             prefix = prefix.substring(0, 255);
         return prefix + "-" + path;

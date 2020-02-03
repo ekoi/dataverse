@@ -35,7 +35,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             sql += "and dvo.owner_id in (" + commasparateDvIds + ")\n";
         }
         sql += "group by dvo.id";
-        logger.info("query - (" + commasparateDvAlias + ") - getListOfDatasetsByStatusAndByDvAlias: " + sql);
+        logger.fine("query - (" + commasparateDvAlias + ") - getListOfDatasetsByStatusAndByDvAlias: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -64,7 +64,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                     break;
             }
         }
-        logger.info("query  - (" + dvAlias + ") - getChildrenIdsRecursivelly: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - getChildrenIdsRecursivelly: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -88,19 +88,19 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "and qt.id=dv.id\n"
                 + "order by depth asc, ownerId asc;";
 
-        logger.info("query  - (" + dvAlias + ") - getDataversesChildrenRecursively: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - getDataversesChildrenRecursively: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
     public List<Object[]> getDataversesNameByIds(List<Integer> ids) {
         String allIds = ids.stream().map( n -> n.toString() ).collect(Collectors.joining(","));
-        logger.info("allIds: " + allIds);
+        logger.fine("allIds: " + allIds);
         if (allIds.isEmpty())
             return Collections.emptyList();
         String sql = "select name, alias, dataversetype\n"
                 + "from dataverse\n"
                 + "where id in (" + allIds + ") order by name\n";
-        logger.info("query - getDataversesNameByIds: " + sql);
+        logger.fine("query - getDataversesNameByIds: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -113,13 +113,13 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
         if (ids.equals(""))
             return Collections.emptyList();
             sql += "and dvo.id in (" + ids + ");\n";
-        logger.info("query  - (" + dvAlias + ") - getDataversesNameByStringDate: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - getDataversesNameByStringDate: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
     public List<Object[]> getDatasetsIdentifierByIds(List<Integer> ids) {
         String allIds = ids.stream().map( n -> n.toString() ).collect(Collectors.joining(","));
-        logger.info("allIds: " + allIds);
+        logger.fine("allIds: " + allIds);
         if (allIds.isEmpty())
             return Collections.emptyList();
         String sql = "select (dvo1.authority || '/' || dvo1.identifier) as pid, count(dvo2.owner_id) as num, sum(df.filesize)\n"
@@ -128,7 +128,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "FULL OUTER JOIN datafile df on df.id=dvo2.id\n"
                 + "where dvo1.id in (" + allIds + ")\n"
                 + "group by pid order by num;";
-            logger.info("query - getDatasetsIdentifierByIds: " + sql);
+            logger.fine("query - getDatasetsIdentifierByIds: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -144,7 +144,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
 
             sql += "and dvo.id in (" + ids + ")\n";
         }
-        logger.info("query  - (" + dvAlias + ") - getDatasetsPIDByStringDate: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - getDatasetsPIDByStringDate: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -157,7 +157,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "and dvo2.dtype='DataFile'\n"
                 + "and dvo1.owner_id = " + id + "\n"
                 + "group by pid order by num;";
-        logger.info("query - getDatasetsByOwnerIds: " + sql);
+        logger.fine("query - getDatasetsByOwnerIds: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -171,7 +171,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "and dvo2.dtype='DataFile'\n"
                 + "and dvo1.owner_id = " + id + "\n"
                 + "group by dvo1.id, pid, dvo1.publicationdate, create_date order by num;";
-        logger.info("query - getDatasetsAndDownloadsByOwnerId: " + sql);
+        logger.fine("query - getDatasetsAndDownloadsByOwnerId: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -187,7 +187,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             sql += "where dvobject.id in (" + ids + ")\n";
         }
         sql += "group by create_date order by create_date;";
-        logger.info("query  - (" + dvAlias + ") - dataversesAllTime: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - dataversesAllTime: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -201,7 +201,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             sql += "where dvobject.id in (" + ids + ")\n";
         }
         sql+= "group by dataversetype order by count desc;";
-        logger.info("query  - (" + dvAlias + ") - dataversesByCategory: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - dataversesByCategory: " + sql);
         return  em.createNativeQuery(sql).getResultList();
     }
 
@@ -216,7 +216,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             sql += "and dv.id in (" + ids + ")\n";
         }
         sql+= "order by dvo.createdate;";
-        logger.info("query  - (" + dvAlias + ") - dataversesByAlias: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - dataversesByAlias: " + sql);
         return  em.createNativeQuery(sql).getResultList();
     }
 
@@ -235,7 +235,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             sql += "where dvobject.id in (" + ids + ")\n";
         }
         sql +="group by create_date order by create_date;";
-        logger.info("query  - (" + dvAlias + ") - datasetsAllTime: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - datasetsAllTime: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -269,7 +269,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "))\n"
                 + "GROUP BY strvalue, dataset.id ORDER BY count(dataset.id) desc;";
 
-        logger.info("query  - (" + dvAlias + ") - datasetsBySubject: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - datasetsBySubject: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
@@ -282,7 +282,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "from dvobject dvo, datafile df\n"
                 + "where dvo.id=df.id and dvo.owner_id in (" + ids + ")\n"
                 + "group by create_date order by create_date;";
-        logger.info("query  - (" + dvAlias + ") - filesAllTime: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - filesAllTime: " + sql);
         Query query = em.createNativeQuery(sql);
         return query.getResultList();
     }
@@ -305,7 +305,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + ")\n"
                 + "SELECT d.name\n"
                 + "FROM rec r, dataverse d where d.id=r.id and r.dtype = 'Dataverse' and r.owner_id is not null order by r.depth desc), '-> ');";
-        logger.info("query - getPath: " + sql);
+        logger.fine("query - getPath: " + sql);
         Query query = em.createNativeQuery(sql);
         return (String)query.getSingleResult();
 
@@ -328,7 +328,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
 
         sql += "and dv.alias in ('" + (dvAlias.replaceAll(",", "','")) + "');\n";
 
-        logger.info("query  - (" + dvAlias + ") - dataverseAliasExist: " + sql);
+        logger.fine("query  - (" + dvAlias + ") - dataverseAliasExist: " + sql);
         Query query = em.createNativeQuery(sql);
         return (boolean)query.getSingleResult();
 
@@ -352,7 +352,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
             sql+= "and dataset_id in (" + commasparateDatasetIds + ")\n";
         }
         sql += "group by response_time, pid order by response_time;";
-        logger.info("query  - (" + commasparateDvAlias + ") - downloadsAllTime: " + sql);
+        logger.fine("query  - (" + commasparateDvAlias + ") - downloadsAllTime: " + sql);
         return  em.createNativeQuery(sql).getResultList();
     }
 
