@@ -2120,9 +2120,8 @@ public class DatasetPage implements java.io.Serializable {
                 swordGroupAlias = getSwordUserGroupAlias(rs, userGroupList);
             }
             dataverseBridgeEnabled = (swordGroupAlias != null);
-            logger.fine("Bridge Sword group alias found: " + swordGroupAlias.toString());
             if (dataverseBridgeEnabled) {
-                logger.info("Bridge is initially enabled");
+                logger.fine("Bridge is initially enabled");
                 for (DatasetVersion dv:dvs) {
                     String darNote = dv.getDarNote();
                     if (darNote != null && (darNote.equals(DataverseBridge.StateEnum.INVALID.toString())
@@ -2139,7 +2138,7 @@ public class DatasetPage implements java.io.Serializable {
                 String darName = workingVersion.getDarNote().split("@")[1];
                 String dvBaseMetadataUrl = dataverseBridgeSetting.getMetadataUrl();
                 DataverseBridge.StateEnum state = dbd.checkArchivingProgress(dvBaseMetadataUrl ,persistentId, workingVersion.getFriendlyVersionNumber(), darName);
-                logger.info("Archiving state of '" + persistentId + "': " + state);
+                logger.fine("Archiving state of '" + persistentId + "': " + state);
             }
         }
 
