@@ -1,5 +1,7 @@
 package edu.harvard.iq.dataverse;
 
+import edu.harvard.iq.dataverse.api.datatag.DataTagValidator;
+import edu.harvard.iq.dataverse.engine.command.impl.*;
 import edu.harvard.iq.dataverse.provenance.ProvPopupFragmentBean;
 import edu.harvard.iq.dataverse.PackagePopupFragmentBean;
 import edu.harvard.iq.dataverse.api.AbstractApiBean;
@@ -58,6 +60,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -80,6 +87,10 @@ import javax.inject.Named;
 
 import org.primefaces.event.FileUploadEvent;
 import org.primefaces.model.UploadedFile;
+
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
 import javax.validation.ConstraintViolation;
 import org.apache.commons.httpclient.HttpClient;
 //import org.primefaces.context.RequestContext;
@@ -2767,6 +2778,97 @@ public class DatasetPage implements java.io.Serializable {
 
     private List<FileMetadata> selectedFiles = new ArrayList<>();
 
+    private boolean enableDataTagService;
+
+    private JsonObject getTaggingServiceConf(){
+        JsonReader jsonReader = Json.createReader(new StringReader(settingsService.getValueForKey(SettingsServiceBean.Key.DataTagService)));
+        JsonObject tgsJsonObject = jsonReader.readObject();
+        jsonReader.close();
+        return tgsJsonObject;
+    }
+    DataTagValidator dataTagValidator = DataTagValidator.getInstance();
+    public boolean isEnableDataTagService() {
+        return settingsService.getValueForKey(SettingsServiceBean.Key.DataTagService) != null
+                && dataTagValidator.isDataTagValid(settingsService.getValueForKey(SettingsServiceBean.Key.DataTagService),
+                                                    DataTagValidator.Type.CONFIGURATION);
+    }
+
+    public String setDataTagInProgress() throws CommandException {
+        if (bulkUpdateCheckVersion()) {
+            refreshSelectedFiles();
+        }
+        if (selectedFiles != null && selectedFiles.size() > 0) {
+            Command cmd;
+            for (FileMetadata fm : selectedFiles) {
+                cmd = new PersistDataTagCommand(dvRequestService.getDataverseRequest(), fm.getDataFile(), "#e6e6e6", "In Progress", "{}",true);
+                commandEngine.submit(cmd);
+            }
+        }
+
+
+        // success message:
+        String successMessage = BundleUtil.getStringFromBundle("file.assignedTabFileTags.success");
+        logger.fine(successMessage);
+        successMessage = successMessage.replace("{0}", "Selected Files");
+        JsfHelper.addFlashMessage(successMessage);
+        return "returnToDraftVersion()";
+    }
+
+    public String getDataTagQueryUrl() {
+        if (isEnableDataTagService()) {
+            if (selectedFiles.size() > 0) {
+                String fileIdsParam = "";
+                StringBuffer sbFileIds = new StringBuffer("[");
+                for (int i = 0; i < selectedFiles.size(); i++) {
+                    sbFileIds.append(selectedFiles.get(i).getDataFile().getId());
+                    if (i < selectedFiles.size() - 1)
+                        sbFileIds.append(",");
+
+                }
+                sbFileIds.append("]");
+                ApiToken apiToken = null;
+                User user = session.getUser();
+                if (user instanceof AuthenticatedUser) {
+                    AuthenticatedUser authenticatedUser = (AuthenticatedUser) user;
+                    apiToken = authService.findApiTokenByUser(authenticatedUser);
+                    if (apiToken != null) {
+                        JsonObject tgsJsonObject = getTaggingServiceConf();
+                        try {
+                            String params = "{\"sourceUrl\":\"" + SystemConfig.getDataverseSiteUrlStatic()
+                                    + "\",\"expiredDateTime\":\"" + LocalDateTime.now().plusSeconds(tgsJsonObject.getInt("validity-duration"))
+                                    .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                    + "\",\"apiKey\":\"" + apiToken.getTokenString()
+                                    + "\",\"persistentId\":\"" + this.persistentId
+                                    + "\",\"version\":\"" + this.version
+                                    + "\",\"fileIds\":" + sbFileIds + "}";
+                            return tgsJsonObject.getString("dataTagServiceUrl") + "?q="
+                                    + URLEncoder.encode(StringUtil.encrypt(params, tgsJsonObject.getString("encryptKey")), "UTF-8");
+                        } catch (UnsupportedEncodingException ex) {
+                            logger.severe(ex.getMessage());
+                        }
+                    }
+                }
+            }else {
+                for (FileMetadata fm:this.workingVersion.getFileMetadatas()){
+                    DataTag dt = fm.getDataFile().getDataTag();
+                    if (dt != null && dt.getTag().equals("In Progress")) {
+                        JsonObject tgsJsonObject = getTaggingServiceConf();
+                        if(LocalDateTime.now().isAfter(dt.getCreateDate().toLocalDateTime().plusSeconds(tgsJsonObject.getInt("validity-duration")))){
+                            //delete
+                            Command<DataFile> cmd = new DeleteDataTagCommand(dvRequestService.getDataverseRequest(), fm.getDataFile());
+                            try {
+                                commandEngine.submit(cmd);
+                            } catch (CommandException ex) {
+                                logger.severe(ex.getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
     public List<FileMetadata> getSelectedFiles() {
         return selectedFiles;
     }
@@ -4400,8 +4502,8 @@ public class DatasetPage implements java.io.Serializable {
         }
         Arrays.sort(selectedTags);
     }
-        
-    /* This method handles saving both "tabular file tags" and 
+
+    /* This method handles saving both "tabular file tags" and
      * "file categories" (which are also considered "tags" in 4.0)
     */
     public String saveFileTagsAndCategories() {
