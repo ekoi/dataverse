@@ -1204,6 +1204,20 @@
                     </p:dialog>
                     <p:remoteCommand name="refreshTagsCommand" action="#{DatasetPage.refreshTagsPopUp()}" update=":datasetForm:fileTagsPopup"
                                      oncomplete="PF('fileTagsPopup').show();"/>
+                    <!--eko start-->
+                    <p:dialog id="selectFilesForAddDataTag" styleClass="smallPopUp"
+                              header="#{bundle['dataset.noSelectedFiles.header']}" widgetVar="selectFilesForAddDataTag" modal="true">
+                        <p class="text-danger"><span class="glyphicon glyphicon-exclamation-sign"/> #{bundle['datatag.noselectedfiles']}</p>
+                        <div class="button-block">
+                            <button class="btn btn-default" onclick="PF('selectFilesForAddDataTag').hide();PF('blockDatasetForm').hide();" type="button">
+                                #{bundle.close}
+                            </button>
+                        </div>
+                    </p:dialog>
+                    <ui:include src="datatagFragment.xhtml"/>
+                    <p:remoteCommand name="refreshDataTagsFormCommand" action="#{DatasetPage.refreshTagsPopUp()}" update=":datasetForm:dataTagsDialog"
+                                     oncomplete="PF('dataTagsForm').show();"/>
+                    <!-- 0eko end EKO, please look the comment below:-->
                     <!-- We no longer need this remoteCommand; see my comments in the javascript method testFilesSelectedForEditMetadata() -->
                     <!-- for more info. - L.A. 4.2.1 -->
                     <!-- p:remoteCommand  name="openEditFilesPageCommand" action=" {DatasetPage.editFileMetadata()}"  / -->
@@ -1685,6 +1699,14 @@
                         // commandButton. -- L.A. 4.2.1
                         //openEditFilesPageCommand();
                         //}
+                    }
+                    function testFilesSelectedForDataTagsForm() {
+                        var count = PF('filesTable').getSelectedRowsCount();
+                        if (count === 0) {
+                            PF('selectFilesForAddDataTag').show();
+                        } else {
+                            refreshDataTagsFormCommand();
+                        }
                     }
                     function updateTemplate() {
                         $('button[id$="updateTemplate"]').trigger('click');

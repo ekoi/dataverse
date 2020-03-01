@@ -1,0 +1,36 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:f="http://java.sun.com/jsf/core"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:c="http://java.sun.com/jsp/jstl/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:jsf="http://xmlns.jcp.org/jsf">
+    <!-- Dialog DataTags Form -->
+    <p:dialog id="dataTagsDialog" styleClass="smallPopUp" header="DataTags of '#{DatasetPage.persistentId}'" widgetVar="dataTagsForm" modal="true">
+                <p:ajax event="close" update=":datasetForm:tabView:filesTable, :datasetForm" />
+        <p:fragment>
+            <!--            <ui:repeat value="#{DatasetPage.selectedTags}" var="tags" rendered="#{!empty DatasetPage.selectedTags}">-->
+            <!--                <h:outputText value="#{tags}" styleClass="label label-default" style="margin-right:.5em;display:inline-block;"/>-->
+            <!--            </ui:repeat>-->
+            <ui:repeat value="#{DatasetPage.selectedFiles}" var="tags" rendered="#{!empty DatasetPage.selectedFiles}">
+                <!--                <h:outputText value="#{tags}" styleClass="label label-default" style="margin-right:.5em;display:inline-block;"/>-->
+                <h:outputText value="#{tags.label}" styleClass="label label-info" style="margin-right:.5em;display:inline-block;"/>
+                <h:outputText value="#{tags.dataFile.contentType}" styleClass="label label-default" style="margin-right:.5em;display:inline-block;"/>
+                <h:outputText value="#{tags.dataFile.checksumValue}" styleClass="label label-default" style="margin-right:.5em;display:inline-block;"/>
+                <br/>
+            </ui:repeat>
+            <br/>
+            <!-- send | cancel buttons -->
+            <c:set var="fileIds" value="#{DatasetPage.getDataTagQueryUrl()}"/>
+            <div class="button-block">
+                <!-- Can I control the HTTP headers sent by window.open (cross browser)? NO -->
+                <!--                <p:commandLink styleClass="btn btn-default" value="Go to DataTags Service"-->
+                <!--                               oncomplete="window.open('${fileIds}','_blank'); PF('dataTagsForm').hide();" update=":datasetForm:tabView:filesTable, :datasetForm" action="#{DatasetPage.saveFileTagsAndCategories()}">-->
+                <!--                </p:commandLink>-->
+                <p:commandLink styleClass="btn btn-default" value="Go to DataTags Service"
+                               oncomplete="window.open('${fileIds}','_blank'); PF('dataTagsForm').hide();" update=":datasetForm:tabView:filesTable, :datasetForm" action="#{DatasetPage.setDataTagInProgress()}">
+                </p:commandLink>
+                <p:commandButton class="btn btn-link" value="#{bundle.close}" onclick="PF('dataTagsForm').hide();PF('blockDatasetForm').hide();" type="button" />
+            </div>
+        </p:fragment>
+    </p:dialog>
+</ui:composition>
