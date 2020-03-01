@@ -570,6 +570,7 @@ public class DataFileServiceBean implements java.io.Serializable {
         Map<Long, Integer> datatableMap = new HashMap<>();
         Map<Long, Integer> categoryMap = new HashMap<>();
         Map<Long, Set<Integer>> fileTagMap = new HashMap<>();
+        Map<Long, DataTag> dataTagMap = new HashMap<>();
         
         List<String> fileTagLabels = DataFileTag.listTags();
         
@@ -615,7 +616,21 @@ public class DataFileServiceBean implements java.io.Serializable {
         dataTagsResults = null;
         
         logger.fine("Retrieved "+i+" data tags.");
-        
+
+        List<Object[]> dataTagResultList = em.createNativeQuery("SELECT t0.DATAFILE_ID, t0.COLORCODE, t0.PROVENANCE, t0.TAG, t0.CREATEDATE FROM DataTag t0, dvObject t1 WHERE (t1.ID = t0.DATAFILE_ID) AND (t1.OWNER_ID="+ owner.getId() + ")").getResultList();
+        System.out.println(dataTagResultList.size());
+        for (Object[] result : dataTagResultList) {
+            Long fileId = (Long)result[0];
+            DataTag dataTag = new DataTag();
+            dataTag.setMergeable(false);
+            dataTag.setId(fileId);
+            dataTag.setColorCode((String)result[1]);
+            dataTag.setProvenance((String)result[2]);
+            dataTag.setTag((String)result[3]);
+            dataTag.setCreateDate((Timestamp) result[4]);
+            dataTagMap.put(fileId,dataTag);
+        }
+
         i = 0; 
         
         List<Object[]> fileResults = em.createNativeQuery("SELECT t0.ID, t0.CREATEDATE, t0.INDEXTIME, t0.MODIFICATIONTIME, t0.PERMISSIONINDEXTIME, t0.PERMISSIONMODIFICATIONTIME, t0.PUBLICATIONDATE, t0.CREATOR_ID, t0.RELEASEUSER_ID, t1.CONTENTTYPE, t0.STORAGEIDENTIFIER, t1.FILESIZE, t1.INGESTSTATUS, t1.CHECKSUMVALUE, t1.RESTRICTED, t1.CHECKSUMTYPE, t1.PREVIOUSDATAFILEID, t1.ROOTDATAFILEID, t0.PROTOCOL, t0.AUTHORITY, t0.IDENTIFIER FROM DVOBJECT t0, DATAFILE t1 WHERE ((t0.OWNER_ID = " + owner.getId() + ") AND ((t1.ID = t0.ID) AND (t0.DTYPE = 'DataFile'))) ORDER BY t0.ID").getResultList(); 
@@ -627,6 +642,8 @@ public class DataFileServiceBean implements java.io.Serializable {
             dataFile.setMergeable(false);
             
             dataFile.setId(file_id.longValue());
+
+            dataFile.setDataTag(dataTagMap.get(dataFile.getId()));
             
             Timestamp createDate = (Timestamp) result[1];
             Timestamp indexTime = (Timestamp) result[2];

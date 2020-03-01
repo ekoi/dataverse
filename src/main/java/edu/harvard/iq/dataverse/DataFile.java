@@ -204,6 +204,17 @@ public class DataFile extends DvObject implements Comparable {
     @OneToMany(mappedBy="dataFile", cascade={CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
     private List<GuestbookResponse> guestbookResponses;
 
+    @OneToOne(mappedBy = "dataFile", cascade = {CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
+    private DataTag dataTag;
+
+    public DataTag getDataTag() {
+        return dataTag;
+    }
+
+    public void setDataTag(DataTag dataTag) {
+        this.dataTag = dataTag;
+    }
+
     public List<GuestbookResponse> getGuestbookResponses() {
         return guestbookResponses;
     }
