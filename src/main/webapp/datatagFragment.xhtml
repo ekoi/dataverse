@@ -6,7 +6,7 @@
                 xmlns:jsf="http://xmlns.jcp.org/jsf">
     <!-- Dialog DataTags Form -->
     <p:dialog id="dataTagsDialog" styleClass="smallPopUp" header="DataTags of '#{DatasetPage.persistentId}'" widgetVar="dataTagsForm" modal="true">
-                <p:ajax event="close" update=":datasetForm:tabView:filesTable, :datasetForm" />
+<!--                <p:ajax event="close" update=":datasetForm:tabView:filesTable, :datasetForm" />-->
         <p:fragment>
             <!--            <ui:repeat value="#{DatasetPage.selectedTags}" var="tags" rendered="#{!empty DatasetPage.selectedTags}">-->
             <!--                <h:outputText value="#{tags}" styleClass="label label-default" style="margin-right:.5em;display:inline-block;"/>-->
@@ -27,7 +27,7 @@
                 <!--                               oncomplete="window.open('${fileIds}','_blank'); PF('dataTagsForm').hide();" update=":datasetForm:tabView:filesTable, :datasetForm" action="#{DatasetPage.saveFileTagsAndCategories()}">-->
                 <!--                </p:commandLink>-->
                 <p:commandLink styleClass="btn btn-default" value="Go to DataTags Service"
-                               oncomplete="window.open('${fileIds}','_blank'); PF('dataTagsForm').hide();" update=":datasetForm:tabView:filesTable, :datasetForm" action="#{DatasetPage.setDataTagInProgress()}">
+                               oncomplete=" PF('dataTagsForm').hide(); window.open('${fileIds}','_blank');" update=":datasetForm:tabView:filesTable, :datasetForm" action="#{DatasetPage.setDataTagInProgress()}">
                 </p:commandLink>
                 <p:commandButton class="btn btn-link" value="#{bundle.close}" onclick="PF('dataTagsForm').hide();PF('blockDatasetForm').hide();" type="button" />
             </div>

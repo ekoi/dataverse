@@ -2811,7 +2811,7 @@ public class DatasetPage implements java.io.Serializable {
         logger.fine(successMessage);
         successMessage = successMessage.replace("{0}", "Selected Files");
         JsfHelper.addFlashMessage(successMessage);
-        return "returnToDraftVersion()";
+        return returnToLatestVersion();
     }
 
     public String getDataTagQueryUrl() {

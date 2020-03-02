@@ -10,10 +10,17 @@
         xmlns:cc="http://java.sun.com/jsf/composite"
         xmlns:o="http://omnifaces.org/ui"
         xmlns:iqbs="http://xmlns.jcp.org/jsf/composite/iqbs">
-    <p:commandLink rendered="#{fileMetadata.dataFile.dataTag != null}"
-                   styleClass="btn round" style="min-width: 95px;max-width: 95px;background-color: #{fileMetadata.dataFile.dataTag.colorCode};color:#FFFFFF;margin-right: 15px;!important;">
+    <p:commandLink rendered="#{fileMetadata.dataFile.dataTag != null and fileMetadata.dataFile.dataTag.tag != 'In Progress'}"
+                   styleClass="btn round" style="min-width: 80px;max-width: 80px;background-color: #{fileMetadata.dataFile.dataTag.colorCode};color:#FFFFFF;margin-right: 15px;!important;">
         <!-- non-tabular data file: -->
         <!-- no guest book/terms of use/etc. - straight to the download API url: -->
         #{fileMetadata.dataFile.dataTag.tag}
+    </p:commandLink>
+
+    <p:commandLink rendered="#{fileMetadata.dataFile.dataTag != null and fileMetadata.dataFile.dataTag.tag == 'In Progress'}"
+                   styleClass="btn round" style="min-width: 150px;max-width: 1500px;background-color: #{fileMetadata.dataFile.dataTag.colorCode};color:#FFFFFF;margin-right: 15px;!important;">
+        <!-- non-tabular data file: -->
+        <!-- no guest book/terms of use/etc. - straight to the download API url: -->
+        DataTag #{fileMetadata.dataFile.dataTag.tag}
     </p:commandLink>
 </ui:composition>
