@@ -38,7 +38,7 @@
                                     </tr>
                                     <tr id="metadata_publicationDate" jsf:rendered="#{!empty publicationDate}">
                                         <th scope="row">
-                                            #{bundle['dataset.metadata.publicationDate']}
+                                            #{bundle['dataset.metadata.publicationDate']}test
                                             <span class="glyphicon glyphicon-question-sign tooltip-icon"
                                                   data-toggle="tooltip" data-placement="auto right" data-original-title="#{bundle['dataset.metadata.publicationDate.tip']}"></span>
                                         </th>
@@ -90,6 +90,10 @@
     </div>
     <!-- Edit Mode -->
     <ui:fragment rendered="${(!empty editMode)}">
+        <c:set var="cvManagerURL" value="#{DatasetPage.getCvManagerURL()}"/>
+        <ui:fragment rendered="#{cvManagerURL != ''}">
+            <script src="#{resource['js/jquery-ui.js']}"></script>
+        </ui:fragment>
         <p:fragment id="editMetadataFragement">
         <o:importFunctions type="java.util.Collections" />
         <div class="panel-group">
@@ -128,6 +132,7 @@
                                                                 <ui:include src="datasetFieldForEditFragment.xhtml">
                                                                     <ui:param name="dsfv" value="#{dsfv}"/>
                                                                     <ui:param name="dsfvIndex" value="#{valCount.index}"/>
+                                                                    <ui:param name="cvMgrUrl" value="#{cvManagerURL}"/>
                                                                 </ui:include>
                                                             </div>
                                                             <!-- Add / Remove buttons -->
@@ -210,6 +215,7 @@
                                                                 <ui:include src="datasetFieldForEditFragment.xhtml">
                                                                     <ui:param name="dsfv" value="#{subdsf.singleValue}"/>
                                                                     <ui:param name="dsfvIndex" value="0"/>
+                                                                    <ui:param name="cvMgrUrl" value="#{cvManagerURL}"/>
                                                                 </ui:include>
                                                             </ui:fragment>
                                                             <!-- MOVED SELECT ONE TO dataFieldForEdit -->
