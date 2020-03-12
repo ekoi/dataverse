@@ -3304,7 +3304,15 @@ public class DatasetPage implements java.io.Serializable {
         }
 
     }
-     
+
+    public String getCvManagerURL() {
+        String cvManagerURL = settingsService.getValueForKey(SettingsServiceBean.Key.CVManagerUrl);
+        if (cvManagerURL != null)
+            return cvManagerURL;
+
+        return "";
+    }
+
     public String save() {
         //Before dataset saved, write cached prov freeform to version
         if (systemConfig.isProvCollectionEnabled()) {
