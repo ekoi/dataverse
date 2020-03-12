@@ -91,9 +91,6 @@
     <!-- Edit Mode -->
     <ui:fragment rendered="${(!empty editMode)}">
         <c:set var="cvManagerURL" value="#{DatasetPage.getCvManagerURL()}"/>
-        <ui:fragment rendered="#{cvManagerURL != ''}">
-            <script src="#{resource['js/jquery-ui.js']}"></script>
-        </ui:fragment>
         <p:fragment id="editMetadataFragement">
         <o:importFunctions type="java.util.Collections" />
         <div class="panel-group">
