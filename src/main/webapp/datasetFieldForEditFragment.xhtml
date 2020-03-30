@@ -73,9 +73,7 @@
                         minLength: 2,
                         select: function(event, ui) {
                             $.each(jsonResult, function(i, v) {
-                            console.log("tai...");
                                  if (v.term.search(new RegExp(ui.item.value)) != -1) {
-                                 console.log("kucing..." + ($("#akmi-#{valCount.index+1}-Vocabulary").find("input[name*='inputTextV']")));
                                     $("#akmi-#{valCount.index+1}-Vocabulary").find("input[name*='inputTextV']").val(v.vocab);
                                     $("#akmi-#{valCount.index+1}-keywordVocabularyURI").find("input[name*='inputTextU']").val(v.url);
                                     return;
