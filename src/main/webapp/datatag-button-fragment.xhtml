@@ -1,0 +1,26 @@
+<ui:composition
+        xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:h="http://java.sun.com/jsf/html"
+        xmlns:f="http://java.sun.com/jsf/core"
+        xmlns:ui="http://java.sun.com/jsf/facelets"
+        xmlns:p="http://primefaces.org/ui"
+        xmlns:c="http://xmlns.jcp.org/jsp/jstl/core"
+        xmlns:jsf="http://xmlns.jcp.org/jsf"
+        xmlns:pt="http://java.sun.com/jsf/passthrough"
+        xmlns:cc="http://java.sun.com/jsf/composite"
+        xmlns:o="http://omnifaces.org/ui"
+        xmlns:iqbs="http://xmlns.jcp.org/jsf/composite/iqbs">
+    <p:commandLink rendered="#{fileMetadata.dataFile.dataTag != null and fileMetadata.dataFile.dataTag.tag != 'In Progress'}"
+                   styleClass="btn round" style="min-width: 80px;max-width: 80px;background-color: #{fileMetadata.dataFile.dataTag.colorCode};color:#FFFFFF;margin-right: 15px;!important;">
+        <!-- non-tabular data file: -->
+        <!-- no guest book/terms of use/etc. - straight to the download API url: -->
+        #{fileMetadata.dataFile.dataTag.tag}
+    </p:commandLink>
+
+    <p:commandLink rendered="#{fileMetadata.dataFile.dataTag != null and fileMetadata.dataFile.dataTag.tag == 'In Progress'}"
+                   styleClass="btn round" style="min-width: 150px;max-width: 1500px;background-color: #{fileMetadata.dataFile.dataTag.colorCode};color:#FFFFFF;margin-right: 15px;!important;">
+        <!-- non-tabular data file: -->
+        <!-- no guest book/terms of use/etc. - straight to the download API url: -->
+        DataTag #{fileMetadata.dataFile.dataTag.tag}
+    </p:commandLink>
+</ui:composition>

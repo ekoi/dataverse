@@ -466,7 +466,17 @@
                                     <h:outputText value="#{bundle['file.delete']}"/> 
                                 </p:commandLink>
                             </li>
-                        </ui:fragment>    
+                        </ui:fragment>
+                        <!-- eko start -->
+                        <ui:fragment rendered="#{DatasetPage.enableDataTagService}">
+                            <li class="#{DatasetPage.lockedFromEdits ? 'disabled' : ''}">
+                                <p:commandLink id="dataTagsForm"
+                                               onclick="testFilesSelectedForDataTagsForm()">
+                                    #{bundle['datatag.popup.title']}
+                                </p:commandLink>
+                            </li>
+                        </ui:fragment>
+                        <!-- eko end -->
                             <li class="#{DatasetPage.lockedFromEdits ? 'disabled' : ''}">
                                 <p:commandLink onclick="testFilesSelectedForEditMetadata();" id="editMetadataSelectedFile" action="#{DatasetPage.editFileMetadata()}">                                         
                                     <h:outputText value="#{bundle['file.metadata']}"/>
@@ -594,6 +604,10 @@
 
             <div class="btn-group" jsf:rendered="#{!fileMetadata.dataFile.filePackage or
                 fileMetadata.dataFile.filePackage and systemConfig.HTTPDownload}">
+                <!--eko-->
+                <ui:include src="datatag-button-fragment.xhtml">
+                    <ui:param name="fileMetadata" value="#{fileMetadata}"/>
+                </ui:include>
                 <ui:include src="file-download-button-fragment.xhtml">
                     <ui:param name="fileMetadata" value="#{fileMetadata}"/>
                     <ui:param name="canUpdateDataset" value="#{DatasetPage.canUpdateDataset()}"/>

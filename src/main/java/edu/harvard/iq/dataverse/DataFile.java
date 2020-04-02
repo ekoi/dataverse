@@ -54,18 +54,18 @@ import org.hibernate.validator.constraints.NotBlank;
  * @author gdurand
  */
 @NamedQueries({
-	@NamedQuery( name="DataFile.removeFromDatasetVersion",
-		query="DELETE FROM FileMetadata f WHERE f.datasetVersion.id=:versionId and f.dataFile.id=:fileId"),
-        @NamedQuery(name="DataFile.findDataFileByIdProtocolAuth", 
+        @NamedQuery( name="DataFile.removeFromDatasetVersion",
+                query="DELETE FROM FileMetadata f WHERE f.datasetVersion.id=:versionId and f.dataFile.id=:fileId"),
+        @NamedQuery(name="DataFile.findDataFileByIdProtocolAuth",
                 query="SELECT s FROM DataFile s WHERE s.identifier=:identifier AND s.protocol=:protocol AND s.authority=:authority"),
-        @NamedQuery(name="DataFile.findDataFileThatReplacedId", 
+        @NamedQuery(name="DataFile.findDataFileThatReplacedId",
                 query="SELECT s.id FROM DataFile s WHERE s.previousDataFileId=:identifier")
 })
 @Entity
 @Table(indexes = {@Index(columnList="ingeststatus")
-		, @Index(columnList="checksumvalue")
-		, @Index(columnList="contenttype")
-		, @Index(columnList="restricted")})
+        , @Index(columnList="checksumvalue")
+        , @Index(columnList="contenttype")
+        , @Index(columnList="restricted")})
 public class DataFile extends DvObject implements Comparable {
     private static final Logger logger = Logger.getLogger(DatasetPage.class.getCanonicalName());
     private static final long serialVersionUID = 1L;
@@ -73,16 +73,16 @@ public class DataFile extends DvObject implements Comparable {
     public static final char INGEST_STATUS_NONE = 65;
     public static final char INGEST_STATUS_SCHEDULED = 66;
     public static final char INGEST_STATUS_INPROGRESS = 67;
-    public static final char INGEST_STATUS_ERROR = 68; 
-    
+    public static final char INGEST_STATUS_ERROR = 68;
+
     public static final Long ROOT_DATAFILE_ID_DEFAULT = (long) -1;
-    
+
     @Expose
     @NotBlank
     @Column( nullable = false )
     @Pattern(regexp = "^.*/.*$", message = "{contenttype.slash}")
     private String contentType;
-    
+
 
 //    @Expose    
 //    @SerializedName("storageIdentifier")
@@ -143,9 +143,9 @@ public class DataFile extends DvObject implements Comparable {
     @Column(nullable = false)
     private String checksumValue;
 
-    
+
     /* start: FILE REPLACE ATTRIBUTES */
-    
+
     // For the initial version of a file, this will be equivalent to the ID
     // Default is -1 until the intial id is generated
     @Expose
@@ -162,20 +162,20 @@ public class DataFile extends DvObject implements Comparable {
     @Column(nullable=true)
     private Long previousDataFileId;
     /* endt: FILE REPLACE ATTRIBUTES */
-    
-    
-    
+
+
+
     @Expose
     @Column(nullable=true)
     private Long filesize;      // Number of bytes in file.  Allows 0 and null, negative numbers not permitted
 
     @Expose
     private boolean restricted;
-    
+
     @Expose
     @Column(columnDefinition = "TEXT", nullable = true, name="prov_entityname")
     private String provEntityName;
-    
+
     /*Add when we integrate with provCPL*/
     //The id given for the datafile by CPL.
 //    @Column(name="prov_cplid") //( nullable=false )
@@ -185,24 +185,35 @@ public class DataFile extends DvObject implements Comparable {
         Tabular (formerly "subsettable") data files have DataTable objects
         associated with them:
     */
-    
+
     @OneToMany(mappedBy = "dataFile", cascade = {CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
     private List<DataTable> dataTables;
-    
+
     @OneToMany(mappedBy = "dataFile", cascade = {CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
     private List<IngestReport> ingestReports;
-    
+
     @OneToOne(mappedBy = "dataFile", cascade = {CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
     private IngestRequest ingestRequest;
-    
+
     @OneToMany(mappedBy = "dataFile", orphanRemoval = true, cascade = {CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
     private List<DataFileTag> dataFileTags;
-    
+
     @OneToMany(mappedBy="dataFile", cascade={CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
     private List<FileMetadata> fileMetadatas;
-    
+
     @OneToMany(mappedBy="dataFile", cascade={CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
     private List<GuestbookResponse> guestbookResponses;
+
+    @OneToOne(mappedBy = "dataFile", cascade = {CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
+    private DataTag dataTag;
+
+    public DataTag getDataTag() {
+        return dataTag;
+    }
+
+    public void setDataTag(DataTag dataTag) {
+        this.dataTag = dataTag;
+    }
 
     public List<GuestbookResponse> getGuestbookResponses() {
         return guestbookResponses;
@@ -211,24 +222,24 @@ public class DataFile extends DvObject implements Comparable {
     public void setGuestbookResponses(List<GuestbookResponse> guestbookResponses) {
         this.guestbookResponses = guestbookResponses;
     }
-    
-    private char ingestStatus = INGEST_STATUS_NONE; 
-    
+
+    private char ingestStatus = INGEST_STATUS_NONE;
+
     @OneToOne(mappedBy = "thumbnailFile")
     private Dataset thumbnailForDataset;
 
     public DataFile() {
         this.fileMetadatas = new ArrayList<>();
         initFileReplaceAttributes();
-    }    
+    }
 
     public DataFile(String contentType) {
         this.contentType = contentType;
         this.fileMetadatas = new ArrayList<>();
         initFileReplaceAttributes();
     }
-    
-    
+
+
     /**
      * All constructors should use this method
      * to initialize this file replace attributes
@@ -237,12 +248,12 @@ public class DataFile extends DvObject implements Comparable {
         this.rootDataFileId = ROOT_DATAFILE_ID_DEFAULT;
         this.previousDataFileId = null;
     }
-    
+
     @Override
     public boolean isEffectivelyPermissionRoot() {
         return false;
     }
-    
+
     public List<DataTable> getDataTables() {
         return dataTables;
     }
@@ -250,7 +261,7 @@ public class DataFile extends DvObject implements Comparable {
     public void setDataTables(List<DataTable> dataTables) {
         this.dataTables = dataTables;
     }
-    
+
     public DataTable getDataTable() {
         if ( getDataTables() != null && getDataTables().size() > 0 ) {
             return getDataTables().get(0);
@@ -268,18 +279,18 @@ public class DataFile extends DvObject implements Comparable {
 
         this.getDataTables().add(dt);
     }
-    
+
     public List<DataFileTag> getTags() {
         return dataFileTags;
     }
-    
+
     public List<String> getTagLabels(){
-        
+
         List<DataFileTag> currentDataTags = this.getTags();
         List<String> tagStrings = new ArrayList<>();
-        
+
         if (( currentDataTags != null)&&(!currentDataTags.isEmpty())){
-                       
+
             for (DataFileTag element : currentDataTags) {
                 tagStrings.add(element.getTypeLabel());
             }
@@ -288,33 +299,33 @@ public class DataFile extends DvObject implements Comparable {
     }
 
     public JsonArrayBuilder getTagLabelsAsJsonArrayBuilder(){
-        
+
         List<DataFileTag> currentDataTags = this.getTags();
 
         JsonArrayBuilder builder = Json.createArrayBuilder();
-        
+
         if ( (currentDataTags == null)||(currentDataTags.isEmpty())){
             return builder;
         }
-        
-        
+
+
         for (DataFileTag element : currentDataTags) {
-            builder.add(element.getTypeLabel());            
+            builder.add(element.getTypeLabel());
         }
         return builder;
     }
     public void setTags(List<DataFileTag> dataFileTags) {
         this.dataFileTags = dataFileTags;
     }
-    
+
     public void addTag(DataFileTag tag) {
         if (dataFileTags == null) {
             dataFileTags = new ArrayList<>();
-        } 
+        }
 
         dataFileTags.add(tag);
     }
-    
+
     public List<FileMetadata> getFileMetadatas() {
         return fileMetadatas;
     }
@@ -322,7 +333,7 @@ public class DataFile extends DvObject implements Comparable {
     public void setFileMetadatas(List<FileMetadata> fileMetadatas) {
         this.fileMetadatas = fileMetadatas;
     }
-    
+
     public IngestReport getIngestReport() {
         if ( ingestReports != null && ingestReports.size() > 0 ) {
             return ingestReports.get(0);
@@ -340,15 +351,15 @@ public class DataFile extends DvObject implements Comparable {
 
         ingestReports.add(report);
     }
-    
+
     public IngestRequest getIngestRequest() {
         return ingestRequest;
     }
-    
+
     public void setIngestRequest(IngestRequest ingestRequest) {
         this.ingestRequest = ingestRequest;
     }
-    
+
     public String getIngestReportMessage() {
         if ( ingestReports != null && ingestReports.size() > 0 ) {
             if (ingestReports.get(0).getReport() != null && !"".equals(ingestReports.get(0).getReport())) {
@@ -357,11 +368,11 @@ public class DataFile extends DvObject implements Comparable {
         }
         return "Ingest failed. No further information is available.";
     }
-    
+
     public boolean isTabularData() {
-        return getDataTables() != null && getDataTables().size() > 0; 
+        return getDataTables() != null && getDataTables().size() > 0;
     }
-    
+
     public String getOriginalFileFormat() {
         if (isTabularData()) {
             DataTable dataTable = getDataTable();
@@ -371,7 +382,7 @@ public class DataFile extends DvObject implements Comparable {
         }
         return null;
     }
-    
+
     public Long getOriginalFileSize() {
         if (isTabularData()) {
             DataTable dataTable = getDataTable();
@@ -386,7 +397,7 @@ public class DataFile extends DvObject implements Comparable {
     public boolean isAncestorOf( DvObject other ) {
         return equals(other);
     }
-    
+
     /*
      * A user-friendly version of the "original format":
      */
@@ -405,7 +416,7 @@ public class DataFile extends DvObject implements Comparable {
     public String getFriendlyType() {
         return FileUtil.getUserFriendlyFileType(this);
     }
-    
+
     @Override
     public Dataset getOwner() {
         return (Dataset) super.getOwner();
@@ -414,10 +425,10 @@ public class DataFile extends DvObject implements Comparable {
     public void setOwner(Dataset dataset) {
         super.setOwner(dataset);
     }
-    
+
     public String getDescription() {
         FileMetadata fmd = getLatestFileMetadata();
-        
+
         if (fmd == null) {
             return null;
         }
@@ -426,16 +437,16 @@ public class DataFile extends DvObject implements Comparable {
 
     public void setDescription(String description) {
         FileMetadata fmd = getLatestFileMetadata();
-        
+
         if (fmd != null) {
             fmd.setDescription(description);
         }
     }
-    
+
     public FileMetadata getFileMetadata() {
         return getLatestFileMetadata();
     }
-    
+
     public FileMetadata getLatestFileMetadata() {
         FileMetadata fmd = null;
 
@@ -443,48 +454,48 @@ public class DataFile extends DvObject implements Comparable {
         if (fileMetadatas.size() == 1) {
             return fileMetadatas.get(0);
         }
-        
+
         for (FileMetadata fileMetadata : fileMetadatas) {
             // if it finds a draft, return it
             if (fileMetadata.getDatasetVersion().getVersionState().equals(VersionState.DRAFT)) {
                 return fileMetadata;
-            }            
-            
+            }
+
             // otherwise return the one with the latest version number
             // duplicate logic in getLatestPublishedFileMetadata()
             if (fmd == null || fileMetadata.getDatasetVersion().getVersionNumber().compareTo( fmd.getDatasetVersion().getVersionNumber() ) > 0 ) {
                 fmd = fileMetadata;
-            } else if ((fileMetadata.getDatasetVersion().getVersionNumber().compareTo( fmd.getDatasetVersion().getVersionNumber())==0 )&& 
-                   ( fileMetadata.getDatasetVersion().getMinorVersionNumber().compareTo( fmd.getDatasetVersion().getMinorVersionNumber()) > 0 )   ) {
+            } else if ((fileMetadata.getDatasetVersion().getVersionNumber().compareTo( fmd.getDatasetVersion().getVersionNumber())==0 )&&
+                    ( fileMetadata.getDatasetVersion().getMinorVersionNumber().compareTo( fmd.getDatasetVersion().getMinorVersionNumber()) > 0 )   ) {
                 fmd = fileMetadata;
             }
         }
         return fmd;
     }
-    
-//    //Returns null if no published version
+
+    //    //Returns null if no published version
     public FileMetadata getLatestPublishedFileMetadata() throws UnsupportedOperationException {
         FileMetadata fmd = null;
-        
+
         for (FileMetadata fileMetadata : fileMetadatas) {
             // if it finds a draft, skip
             if (fileMetadata.getDatasetVersion().getVersionState().equals(VersionState.DRAFT)) {
                 continue;
-            }            
-            
+            }
+
             // otherwise return the one with the latest version number
             // duplicate logic in getLatestFileMetadata()
             if (fmd == null || fileMetadata.getDatasetVersion().getVersionNumber().compareTo( fmd.getDatasetVersion().getVersionNumber() ) > 0 ) {
                 fmd = fileMetadata;
-            } else if ((fileMetadata.getDatasetVersion().getVersionNumber().compareTo( fmd.getDatasetVersion().getVersionNumber())==0 )&& 
-                   ( fileMetadata.getDatasetVersion().getMinorVersionNumber().compareTo( fmd.getDatasetVersion().getMinorVersionNumber()) > 0 )   ) {
+            } else if ((fileMetadata.getDatasetVersion().getVersionNumber().compareTo( fmd.getDatasetVersion().getVersionNumber())==0 )&&
+                    ( fileMetadata.getDatasetVersion().getMinorVersionNumber().compareTo( fmd.getDatasetVersion().getMinorVersionNumber()) > 0 )   ) {
                 fmd = fileMetadata;
             }
         }
         if(fmd == null) {
             throw new UnsupportedOperationException("No published metadata version for DataFile " + this.getId());
         }
-        
+
         return fmd;
     }
 
@@ -496,28 +507,28 @@ public class DataFile extends DvObject implements Comparable {
         if (this.filesize == null) {
             // -1 means "unknown"
             return -1;
-        } 
+        }
         return this.filesize;
     }
 
     /**
      * Set property filesize in bytes
-     * 
+     *
      * Allow nulls, but not negative numbers.
-     * 
+     *
      * @param filesize new value of property filesize.
      */
     public void setFilesize(long filesize) {
         if (filesize < 0){
             return;
         }
-       this.filesize = filesize;
+        this.filesize = filesize;
     }
 
     /**
      * Converts the stored size of the file in bytes to 
      * a user-friendly value in KB, MB or GB.
-     * @return 
+     * @return
      */
     public String getFriendlySize() {
         return FileSizeChecker.bytesToHumanReadable(filesize);
@@ -527,7 +538,7 @@ public class DataFile extends DvObject implements Comparable {
         return restricted;
     }
 
-    
+
     public void setRestricted(boolean restricted) {
         this.restricted = restricted;
     }
@@ -554,14 +565,14 @@ public class DataFile extends DvObject implements Comparable {
 
     public StorageIO<DataFile> getStorageIO() throws IOException {
         StorageIO<DataFile> storageIO = DataAccess.getStorageIO(this);
-        
+
         if (storageIO == null) {
             throw new IOException("Failed to create storageIO for datafile.");
         }
-        
-        return storageIO; 
+
+        return storageIO;
     }
-    
+
     /*
         Does the contentType indicate a shapefile?
     */
@@ -571,7 +582,7 @@ public class DataFile extends DvObject implements Comparable {
         }
         return ShapefileHandler.SHAPEFILE_FILE_TYPE.equalsIgnoreCase(this.contentType);
     }
-    
+
     public boolean isImage() {
         // Some browsers (Chrome?) seem to identify FITS files as mime
         // type "image/fits" on upload; this is both incorrect (the official
@@ -585,59 +596,59 @@ public class DataFile extends DvObject implements Comparable {
         // generate thumbnails and previews for them)
         return (contentType != null && (contentType.startsWith("image/") || contentType.equalsIgnoreCase("application/pdf")));
     }
-    
+
     public boolean isFilePackage() {
         return DataFileServiceBean.MIME_TYPE_PACKAGE_FILE.equalsIgnoreCase(contentType);
     }
 
     public void setIngestStatus(char ingestStatus) {
-        this.ingestStatus = ingestStatus; 
-    }    
-   
+        this.ingestStatus = ingestStatus;
+    }
+
     public boolean isIngestScheduled() {
         return (ingestStatus == INGEST_STATUS_SCHEDULED);
     }
-    
+
     public boolean isIngestInProgress() {
         return ((ingestStatus == INGEST_STATUS_SCHEDULED) || (ingestStatus == INGEST_STATUS_INPROGRESS));
     }
-    
+
     public boolean isIngestProblem() {
         return (ingestStatus == INGEST_STATUS_ERROR);
     }
-    
+
     public void SetIngestScheduled() {
         ingestStatus = INGEST_STATUS_SCHEDULED;
     }
-    
+
     public void SetIngestInProgress() {
         ingestStatus = INGEST_STATUS_INPROGRESS;
     }
-    
+
     public void SetIngestProblem() {
         ingestStatus = INGEST_STATUS_ERROR;
     }
-    
+
     public void setIngestDone() {
         ingestStatus = INGEST_STATUS_NONE;
     }
-    
+
     public int getIngestStatus() {
-        return ingestStatus; 
+        return ingestStatus;
     }
-    
+
     public Dataset getThumbnailForDataset() {
         return thumbnailForDataset;
     }
-    
+
     public void setAsThumbnailForDataset(Dataset dataset) {
         thumbnailForDataset = dataset;
     }
-    
+
     /**
      * URL to use with the WorldMapRelatedData API
      * Used within dataset.xhtml
-     * 
+     *
      * @param dataverseUserID
      * @return URL for "Map It" functionality
      */
@@ -647,7 +658,7 @@ public class DataFile extends DvObject implements Comparable {
         }
         return WorldMapRelatedData.getMapItURL(this.getId(), dataverseUserID);
     }
-        
+
     /*
         8/10/2014 - Using the current "open access" url
     */
@@ -657,12 +668,12 @@ public class DataFile extends DvObject implements Comparable {
         }
         return serverName + "/api/access/datafile/" + this.getId();
     }
-    
-    /* 
+
+    /*
      * If this is tabular data, the corresponding dataTable may have a UNF -
      * "numeric fingerprint" signature - generated:
      */
-    
+
     public String getUnf() {
         if (this.isTabularData()) {
             // (isTabularData() method above verifies that that this file 
@@ -670,14 +681,14 @@ public class DataFile extends DvObject implements Comparable {
             // safe, in terms of a NullPointerException: 
             return this.getDataTable().getUnf();
         }
-        return null; 
+        return null;
     }
-    
+
 
     @ManyToMany
     @JoinTable(name = "fileaccessrequests",
-    joinColumns = @JoinColumn(name = "datafile_id"),
-    inverseJoinColumns = @JoinColumn(name = "authenticated_user_id"))
+            joinColumns = @JoinColumn(name = "datafile_id"),
+            inverseJoinColumns = @JoinColumn(name = "authenticated_user_id"))
     private List<AuthenticatedUser> fileAccessRequesters;
 
     public List<AuthenticatedUser> getFileAccessRequesters() {
@@ -687,40 +698,40 @@ public class DataFile extends DvObject implements Comparable {
     public void setFileAccessRequesters(List<AuthenticatedUser> fileAccessRequesters) {
         this.fileAccessRequesters = fileAccessRequesters;
     }
-    
+
     public boolean isHarvested() {
-        
+
         // (storageIdentifier is not nullable - so no need to check for null
         // pointers below):
         if (this.getStorageIdentifier().startsWith("http://") || this.getStorageIdentifier().startsWith("https://")) {
             return true;
         }
-        
+
         Dataset ownerDataset = this.getOwner();
         if (ownerDataset != null) {
-            return ownerDataset.isHarvested(); 
+            return ownerDataset.isHarvested();
         }
-        return false; 
+        return false;
     }
-    
+
     public String getRemoteArchiveURL() {
         if (isHarvested()) {
             Dataset ownerDataset = this.getOwner();
             return ownerDataset.getRemoteArchiveURL();
         }
-        
-        return null; 
+
+        return null;
     }
-    
+
     public String getHarvestingDescription() {
         if (isHarvested()) {
             Dataset ownerDataset = this.getOwner();
             return ownerDataset.getHarvestingDescription();
         }
-        
+
         return null;
     }
-    
+
     @Override
     public boolean equals(Object object) {
         if (!(object instanceof DataFile)) {
@@ -740,22 +751,22 @@ public class DataFile extends DvObject implements Comparable {
         FileMetadata fmd = getLatestFileMetadata();
         return "label:" + (fmd!=null? fmd.getLabel() : "[no metadata]");
     }
-	
-	@Override
-	public <T> T accept( Visitor<T> v ) {
-		return v.visit(this);
-	}
-        
+
+    @Override
+    public <T> T accept( Visitor<T> v ) {
+        return v.visit(this);
+    }
+
     @Override
     public String getDisplayName() {
-       return getLatestFileMetadata().getLabel(); 
+        return getLatestFileMetadata().getLabel();
     }
-    
-    @Override 
+
+    @Override
     public String getCurrentName(){
         return getLatestFileMetadata().getLabel();
     }
-    
+
     @Override
     public int compareTo(Object o) {
         /*
@@ -771,10 +782,10 @@ public class DataFile extends DvObject implements Comparable {
         }
         return comparison;
     }
-    
+
     /**
      * Check if the Geospatial Tag has been assigned to this file
-     * @return 
+     * @return
      */
     public boolean hasGeospatialTag(){
         if (this.dataFileTags == null){
@@ -788,7 +799,7 @@ public class DataFile extends DvObject implements Comparable {
         return false;
     }
 
-    
+
     /**
      *  Set rootDataFileId
      *  @param rootDataFileId
@@ -812,15 +823,15 @@ public class DataFile extends DvObject implements Comparable {
 //    public void setProvCplId(int cplId) {
 //        this.provCplId = cplId;
 //    }
-    
+
     public String getProvEntityName() {
         return provEntityName;
     }
-    
+
     public void setProvEntityName(String name) {
         this.provEntityName = name;
     }
-    
+
     /**
      *  Set previousDataFileId
      *  @param previousDataFileId
@@ -838,28 +849,28 @@ public class DataFile extends DvObject implements Comparable {
     }
 
     public String toPrettyJSON(){
-        
+
         return serializeAsJSON(true);
     }
 
     public String toJSON(){
-        
+
         return serializeAsJSON(false);
     }
-    
-    
-    
+
+
+
     public JsonObject asGsonObject(boolean prettyPrint){
-        
+
         String overarchingKey = "data";
-        
+
         GsonBuilder builder;
         if (prettyPrint){  // Add pretty printing
             builder = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().setPrettyPrinting();
         }else{
-            builder = new GsonBuilder().excludeFieldsWithoutExposeAnnotation();                        
+            builder = new GsonBuilder().excludeFieldsWithoutExposeAnnotation();
         }
-        
+
         builder.serializeNulls();   // correctly capture nulls
         Gson gson = builder.create();
 
@@ -888,30 +899,30 @@ public class DataFile extends DvObject implements Comparable {
         datasetMap.put("version", thisFileMetadata.getDatasetVersion().getSemanticVersion());
         datasetMap.put("id", getOwner().getId());
         datasetMap.put("isPublished", thisFileMetadata.getDatasetVersion().isReleased());
-        
+
         jsonObj.getAsJsonObject().add("dataset",  gson.toJsonTree(datasetMap));
-       
+
         // ----------------------------------
         //  Add dataverse info
         // ----------------------------------
         Map<String, Object> dataverseMap = new HashMap<>();
         Dataverse dv = this.getOwner().getOwner();
-        
+
         dataverseMap.put("name", dv.getName());
         dataverseMap.put("alias", dv.getAlias());
-        dataverseMap.put("id", dv.getId()); 
+        dataverseMap.put("id", dv.getId());
 
         jsonObj.getAsJsonObject().add("dataverse",  gson.toJsonTree(dataverseMap));
-        
+
         // ----------------------------------
         //  Add label (filename), description, and categories from the FileMetadata object
         // ----------------------------------
 
         jsonObj.getAsJsonObject().addProperty("filename", thisFileMetadata.getLabel());
         jsonObj.getAsJsonObject().addProperty("description", thisFileMetadata.getDescription());
-        jsonObj.getAsJsonObject().add("categories", 
-                            gson.toJsonTree(thisFileMetadata.getCategoriesByName())
-                    );
+        jsonObj.getAsJsonObject().add("categories",
+                gson.toJsonTree(thisFileMetadata.getCategoriesByName())
+        );
 
         // ----------------------------------        
         // Tags
@@ -924,43 +935,43 @@ public class DataFile extends DvObject implements Comparable {
         Map<String, String> checkSumMap = new HashMap<>();
         checkSumMap.put("type", getChecksumType().toString());
         checkSumMap.put("value", getChecksumValue());
-        
+
         JsonElement checkSumJSONMap = gson.toJsonTree(checkSumMap);
-        
+
         jsonObj.getAsJsonObject().add("checksum", checkSumJSONMap);
-        
+
         return jsonObj.getAsJsonObject();
-        
+
     }
-    
+
     /**
-     * 
+     *
      * @param prettyPrint
-     * @return 
+     * @return
      */
     private String serializeAsJSON(boolean prettyPrint){
-        
+
         JsonObject fullFileJSON = asGsonObject(prettyPrint);
-              
+
         //return fullFileJSON.
         return fullFileJSON.toString();
-        
+
     }
-    
+
     public String getPublicationDateFormattedYYYYMMDD() {
         if (getPublicationDate() != null){
-                   return new SimpleDateFormat("yyyy-MM-dd").format(getPublicationDate()); 
+            return new SimpleDateFormat("yyyy-MM-dd").format(getPublicationDate());
         }
         return null;
     }
-    
+
     public String getCreateDateFormattedYYYYMMDD() {
         if (getCreateDate() != null){
-                   return new SimpleDateFormat("yyyy-MM-dd").format(getCreateDate()); 
+            return new SimpleDateFormat("yyyy-MM-dd").format(getCreateDate());
         }
         return null;
     }
-    
+
 
 } // end of class
     

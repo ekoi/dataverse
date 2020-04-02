@@ -191,6 +191,8 @@ public class SettingsServiceBean {
          */
         CVManagerUrl,
 
+        DataTagService,
+
         /**
          * A link to an installation of https://github.com/IQSS/miniverse or
          * some other metrics app.
