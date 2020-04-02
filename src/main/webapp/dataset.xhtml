@@ -1700,6 +1700,14 @@
                         //openEditFilesPageCommand();
                         //}
                     }
+                    function testFilesSelectedForDataTagsForm() {
+                        var count = PF('filesTable').getSelectedRowsCount();
+                        if (count === 0) {
+                            PF('selectFilesForAddDataTag').show();
+                        } else {
+                            refreshDataTagsFormCommand();
+                        }
+                    }
                     function updateTemplate() {
                         $('button[id$="updateTemplate"]').trigger('click');
                     }
