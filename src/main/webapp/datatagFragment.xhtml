@@ -11,6 +11,7 @@
             <!--            <ui:repeat value="#{DatasetPage.selectedTags}" var="tags" rendered="#{!empty DatasetPage.selectedTags}">-->
             <!--                <h:outputText value="#{tags}" styleClass="label label-default" style="margin-right:.5em;display:inline-block;"/>-->
             <!--            </ui:repeat>-->
+            <h:outputText value="#{bundle['datatag.popup.content']}"/><br/><br/>
             <ui:repeat value="#{DatasetPage.selectedFiles}" var="tags" rendered="#{!empty DatasetPage.selectedFiles}">
                 <!--                <h:outputText value="#{tags}" styleClass="label label-default" style="margin-right:.5em;display:inline-block;"/>-->
                 <h:outputText value="#{tags.label}" styleClass="label label-info" style="margin-right:.5em;display:inline-block;"/>
@@ -18,6 +19,8 @@
                 <h:outputText value="#{tags.dataFile.checksumValue}" styleClass="label label-default" style="margin-right:.5em;display:inline-block;"/>
                 <br/>
             </ui:repeat>
+            <br/>
+            <h:outputText value="#{bundle['datatag.popup.moreinfo']}"/><br/><br/>
             <br/>
             <!-- send | cancel buttons -->
             <c:set var="fileIds" value="#{DatasetPage.getDataTagQueryUrl()}"/>
