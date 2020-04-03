@@ -2789,7 +2789,7 @@ public class DatasetPage implements java.io.Serializable {
     }
     DataTagValidator dataTagValidator = DataTagValidator.getInstance();
     public boolean isEnableDataTagService() {
-        return settingsService.getValueForKey(SettingsServiceBean.Key.DataTagService) != null
+        return workingVersion.isDraft() && settingsService.getValueForKey(SettingsServiceBean.Key.DataTagService) != null
                 && dataTagValidator.isDataTagValid(settingsService.getValueForKey(SettingsServiceBean.Key.DataTagService),
                                                     DataTagValidator.Type.CONFIGURATION);
     }
