@@ -196,6 +196,7 @@ public class SettingsServiceBean {
          * Controlled Vocabulary URL
          */
         CVManagerUrl,
+        CVManagerVocabs,
 
         /**
          * A link to an installation of https://github.com/IQSS/miniverse or

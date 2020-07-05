@@ -30,9 +30,14 @@
     </ui:fragment>
     <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.title=='Vocabulary'}">
         <div id="akmi-#{valCount.index+1}-Vocabulary">
+            <p:selectOneMenu value="#{dsfv.valueForEdit}" id="inputTextV" tabindex="#{block.index+1}" editable="true">
+                <f:selectItems value="#{DatasetPage.cvManagerVocabs}" />
+            </p:selectOneMenu>
+<!--
             <p:inputText value="#{dsfv.valueForEdit}" id="inputTextV" tabindex="#{block.index+1}"
                          styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
                          rendered="#{dsfv.datasetField.datasetFieldType.title=='Vocabulary'}"/>
+                         -->
         </div>
     </ui:fragment>
     <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.title=='Vocabulary URL'}">
@@ -46,22 +51,28 @@
 
             <script>
                 $(document).ready(function() {
-                    var jsonResult = {};
+                var jsonResult = {};
+                    var selectedVocab = "";
+                    $("#akmi-#{valCount.index+1}-Vocabulary").find("select[name*='inputTextV_input']").change(function(){
+                        selectedVocab = $(this).children("option:selected").val();
+                        $("#akmi-#{valCount.index+1}-keywordVocabularyURI").find("input[name*='inputTextU']").val("");
+                        $("#akmi-#{valCount.index+1}-Term").find("input[name*='inputTextTerm']").val("");
+                    });
+
                    $("#akmi-#{valCount.index+1}-Term").find("input[name*='inputTextTerm']").autocomplete({
                         source: function(request, response) {
                             $.ajax({
-                                url: "#{cvMgrUrl}",
+                                url: "#{cvMgrUrl}?q=" + selectedVocab,
                                 dataType: "json",
-                                data: { q: request.term, cv: request.vocab },
+                                data: { code: request.term},
                                 success: function(data) {
-                                    var locodes = data.listOfCodes;
+                                    var locodes = data.controlledVocabulary;
                                     var terms = [];
                                     var array = [];
                                     $.each(locodes, function(i, item) {
                                         terms.push(item.prefLabel.value);
                                         array.push({
                                             term: item.prefLabel.value,
-                                            vocab: data.vocab,
                                             url: item.url.value
                                         });
                                      });
@@ -74,7 +85,6 @@
                         select: function(event, ui) {
                             $.each(jsonResult, function(i, v) {
                                  if (v.term.search(new RegExp(ui.item.value)) != -1) {
-                                    $("#akmi-#{valCount.index+1}-Vocabulary").find("input[name*='inputTextV']").val(v.vocab);
                                     $("#akmi-#{valCount.index+1}-keywordVocabularyURI").find("input[name*='inputTextU']").val(v.url);
                                     return;
                                 }

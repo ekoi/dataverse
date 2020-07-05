@@ -3303,6 +3303,16 @@ public class DatasetPage implements java.io.Serializable {
 
         return "";
     }
+
+    public List<String> getCvManagerVocabs() {
+        List<String> vocabs = new ArrayList();
+        String cVManagerVocabs = settingsService.getValueForKey(SettingsServiceBean.Key.CVManagerVocabs);
+        if (cVManagerVocabs != null) {
+            vocabs = Arrays.asList(cVManagerVocabs.split(","));
+        }
+        return vocabs;
+    }
+
     public String save() {
         //Before dataset saved, write cached prov freeform to version
         if (systemConfig.isProvCollectionEnabled()) {
