@@ -10,7 +10,7 @@
     <ui:remove>
         <!-- input text start UPDATE: UI:REMOVE applied due to duplicate ID errors, left code as reference incase test scripts complain -->
         <span id="pre-input-#{dsf.datasetFieldType.name}" class="pre-input-tag"/></ui:remove>
-    <c:set var="displayCV" value="#{cvManagerURL != '' and (dsfv.datasetField.datasetFieldType.title=='Term' or dsfv.datasetField.datasetFieldType.title=='Vocabulary URL' or dsfv.datasetField.datasetFieldType.title=='Vocabulary')}"/>
+    <c:set var="displayCV" value="#{cvManagerURL != '' and (dsfv.datasetField.datasetFieldType.name =='keywordValue' or dsfv.datasetField.datasetFieldType.name=='keywordVocabulary' or dsfv.datasetField.datasetFieldType.name=='keywordVocabularyURI')}"/>
     <p:inputText value="#{dsfv.valueForEdit}" id="inputText" pt:aria-required="#{dsf.required}"
                  styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
                  rendered="#{!dsfv.datasetField.datasetFieldType.controlledVocabulary and !displayCV
@@ -21,26 +21,21 @@
                              or dsfv.datasetField.datasetFieldType.fieldType == 'DATE'
                              or dsfv.datasetField.datasetFieldType.fieldType == 'EMAIL')}"/>
     <p:watermark for="inputText" value="#{dsfv.datasetField.datasetFieldType.localeWatermark}"></p:watermark>
-    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.title=='Vocabulary'}">
+    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.name=='keywordVocabulary'}">
         <div id="akmi-#{valCount.index+1}-Vocabulary">
             <p:selectOneMenu value="#{dsfv.valueForEdit}" id="inputTextV" tabindex="#{block.index+1}" editable="true">
                 <f:selectItems value="#{DatasetPage.cvManagerVocabs}" />
             </p:selectOneMenu>
-<!--
-            <p:inputText value="#{dsfv.valueForEdit}" id="inputTextV" tabindex="#{block.index+1}"
-                         styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
-                         rendered="#{dsfv.datasetField.datasetFieldType.title=='Vocabulary'}"/>
-                         -->
         </div>
     </ui:fragment>
-    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.title=='Term' }">
+    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.name =='keywordValue' }">
         <div id="akmi-#{valCount.index+1}-Term">
             <p:inputText value="#{dsfv.valueForEdit}" id="inputTextTerm" tabindex="#{block.index+1}"
                          styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
                          rendered="#{dsfv.datasetField.datasetFieldType.title=='Term'}"/>
         </div>
     </ui:fragment>
-    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.title=='Vocabulary URL'}">
+    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.name=='keywordVocabularyURI'}">
         <div id="akmi-#{valCount.index+1}-keywordVocabularyURI">
             <p:inputText value="#{dsfv.valueForEdit}" id="inputTextU" tabindex="#{block.index+1}"
                          styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
