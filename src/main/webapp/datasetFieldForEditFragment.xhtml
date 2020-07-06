@@ -21,13 +21,6 @@
                              or dsfv.datasetField.datasetFieldType.fieldType == 'DATE'
                              or dsfv.datasetField.datasetFieldType.fieldType == 'EMAIL')}"/>
     <p:watermark for="inputText" value="#{dsfv.datasetField.datasetFieldType.localeWatermark}"></p:watermark>
-    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.title=='Term' }">
-        <div id="akmi-#{valCount.index+1}-Term">
-            <p:inputText value="#{dsfv.valueForEdit}" id="inputTextTerm" tabindex="#{block.index+1}"
-                         styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
-                         rendered="#{dsfv.datasetField.datasetFieldType.title=='Term'}"/>
-        </div>
-    </ui:fragment>
     <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.title=='Vocabulary'}">
         <div id="akmi-#{valCount.index+1}-Vocabulary">
             <p:selectOneMenu value="#{dsfv.valueForEdit}" id="inputTextV" tabindex="#{block.index+1}" editable="true">
@@ -38,6 +31,13 @@
                          styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
                          rendered="#{dsfv.datasetField.datasetFieldType.title=='Vocabulary'}"/>
                          -->
+        </div>
+    </ui:fragment>
+    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.title=='Term' }">
+        <div id="akmi-#{valCount.index+1}-Term">
+            <p:inputText value="#{dsfv.valueForEdit}" id="inputTextTerm" tabindex="#{block.index+1}"
+                         styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
+                         rendered="#{dsfv.datasetField.datasetFieldType.title=='Term'}"/>
         </div>
     </ui:fragment>
     <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.title=='Vocabulary URL'}">
