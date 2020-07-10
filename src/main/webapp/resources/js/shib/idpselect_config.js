@@ -19,7 +19,7 @@ function IdPSelectUIParms() {
         shibRedirectPage = encodeURIComponent("?redirectPage=" + redirectStr);
     }
 
-    this.defaultReturn = window.location.protocol + "//" + window.location.hostname + "/Shibboleth.sso/Login?SAMLDS=1&target=" + window.location.protocol + "//" + window.location.hostname + "/ms/ShibAttributesHandler" + shibRedirectPage;
+    this.defaultReturn = window.location.protocol + "//" + window.location.hostname + "/Shibboleth.sso/Login?SAMLDS=1&target=" + window.location.protocol + "//" + window.location.hostname + "/shib.xhtml" + shibRedirectPage;
     this.defaultReturnIDParam = null;
     this.helpURL = 'http://guides.dataverse.org/en/latest/user/account.html';
     this.ie6Hack = null;             // An array of structures to disable when drawing the pull down (needed to 
