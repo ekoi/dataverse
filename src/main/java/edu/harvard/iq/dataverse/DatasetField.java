@@ -9,13 +9,31 @@ package edu.harvard.iq.dataverse;
  *
  * @author skraffmiller
  */
-
-import org.apache.commons.lang.StringUtils;
-
-import javax.persistence.*;
 import java.io.Serializable;
-import java.util.*;
-import java.util.logging.Logger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Index;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
+import javax.persistence.OrderBy;
+import javax.persistence.Table;
+import javax.persistence.Transient;
+import org.apache.commons.lang.StringUtils;
 
 @Entity
 @ValidateDatasetFieldType
@@ -41,7 +59,7 @@ public class DatasetField implements Serializable {
         DatasetField dsfv = createNewEmptyDatasetField(dsfType);
         //TODO - a better way to handle this?
         if (dsv.getClass().getName().equals("edu.harvard.iq.dataverse.DatasetVersion")){
-                   dsfv.setDatasetVersion((DatasetVersion)dsv);
+                   dsfv.setDatasetVersion((DatasetVersion)dsv); 
         } else {
             dsfv.setTemplate((Template)dsv);
         }
@@ -52,16 +70,12 @@ public class DatasetField implements Serializable {
     // originally this was an overloaded method, but we renamed it to get around an issue with Bean Validation
     // (that looked t overloaded methods, when it meant to look at overriden methods
     public static DatasetField createNewEmptyChildDatasetField(DatasetFieldType dsfType, DatasetFieldCompoundValue compoundValue) {
-        logger.info("createNewEmptyChildDatasetField");
         DatasetField dsfv = createNewEmptyDatasetField(dsfType);
         dsfv.setParentDatasetFieldCompoundValue(compoundValue);
-
-
         return dsfv;
     }
 
     private static DatasetField createNewEmptyDatasetField(DatasetFieldType dsfType) {
-        logger.info("createNewEmptyDatasetField - dsfType: " + dsfType.getName());
         DatasetField dsfv = new DatasetField();
         dsfv.setDatasetFieldType(dsfType);
 
@@ -86,8 +100,6 @@ public class DatasetField implements Serializable {
     public static Map<MetadataBlock, List<DatasetField>> groupByBlock(List<DatasetField> fields) {
         Map<MetadataBlock, List<DatasetField>> retVal = new HashMap<>();
         for (DatasetField f : fields) {
-            logger.info("groupByBlock - DatasetField: " + f.datasetFieldType.getName());
-            logger.info("groupByBlock - DatasetField: " + f.datasetFieldType.getDisplayOrder());
             MetadataBlock metadataBlock = f.getDatasetFieldType().getMetadataBlock();
             List<DatasetField> lst = retVal.get(metadataBlock);
             if (lst == null) {
@@ -161,12 +173,10 @@ public class DatasetField implements Serializable {
     private List<DatasetFieldCompoundValue> datasetFieldCompoundValues = new ArrayList<>();
 
     public List<DatasetFieldCompoundValue> getDatasetFieldCompoundValues() {
-        logger.info("getDatasetFieldCompoundValues: " + datasetFieldCompoundValues.size());
         return datasetFieldCompoundValues;
     }
 
     public void setDatasetFieldCompoundValues(List<DatasetFieldCompoundValue> datasetFieldCompoundValues) {
-        logger.info("setDatasetFieldCompoundValues: " + datasetFieldCompoundValues);
         this.datasetFieldCompoundValues = datasetFieldCompoundValues;
     }
 
@@ -175,7 +185,6 @@ public class DatasetField implements Serializable {
     private List<DatasetFieldValue> datasetFieldValues = new ArrayList<>();
 
     public List<DatasetFieldValue> getDatasetFieldValues() {
-        logger.info("getDatasetFieldValues: " + this.datasetFieldValues);
         return this.datasetFieldValues;
     }
 
@@ -508,7 +517,7 @@ public class DatasetField implements Serializable {
         
         if (version != null) {
             if (version.getClass().getName().equals("edu.harvard.iq.dataverse.DatasetVersion")) {
-                dsf.setDatasetVersion((DatasetVersion) version);
+                dsf.setDatasetVersion((DatasetVersion) version);               
             } else {
                 dsf.setTemplate((Template) version);
             }
@@ -568,15 +577,12 @@ public class DatasetField implements Serializable {
     }
 
     public void setValueDisplayOrder() {
-        logger.info("setValueDisplayOrder");
         if (this.getDatasetFieldType().isPrimitive() && !this.getDatasetFieldType().isControlledVocabulary()) {
-            logger.info("setValueDisplayOrder - NOT control vocab");
             for (int i = 0; i < datasetFieldValues.size(); i++) {
                 datasetFieldValues.get(i).setDisplayOrder(i);
             }
 
         } else if (this.getDatasetFieldType().isCompound()) {
-            logger.info("setValueDisplayOrder - isCompound()");
             for (int i = 0; i < datasetFieldCompoundValues.size(); i++) {
                 DatasetFieldCompoundValue compoundValue = datasetFieldCompoundValues.get(i);
                 compoundValue.setDisplayOrder(i);
@@ -589,19 +595,13 @@ public class DatasetField implements Serializable {
     
     public void trimTrailingSpaces() {
         if (this.getDatasetFieldType().isPrimitive() && !this.getDatasetFieldType().isControlledVocabulary()) {
-            logger.info("trimTrailingSpaces -- 1");
             for (int i = 0; i < datasetFieldValues.size(); i++) {
-                logger.info("datasetFieldValues.get(i).getValue() : " + datasetFieldValues.get(i).getValue());
-
                 datasetFieldValues.get(i).setValue(datasetFieldValues.get(i).getValue().trim());
             }
         } else if (this.getDatasetFieldType().isCompound()) {
-            logger.info("trimTrailingSpaces--2");
             for (int i = 0; i < datasetFieldCompoundValues.size(); i++) {
                 DatasetFieldCompoundValue compoundValue = datasetFieldCompoundValues.get(i);
                 for (DatasetField dsf : compoundValue.getChildDatasetFields()) {
-                    logger.info("trimTrailingSpaces - dsf: " + dsf.datasetFieldType.getName());
-
                     dsf.trimTrailingSpaces();
                 }
             }
@@ -616,10 +616,8 @@ public class DatasetField implements Serializable {
     public void removeDatasetFieldValue(int index) {
         datasetFieldValues.remove(index);
     }
-    private static final Logger logger = Logger.getLogger(DatasetField.class.getCanonicalName());
 
     public void addDatasetFieldCompoundValue(int index) {
-        logger.info("addDatasetFieldCompoundValue, index: " + index);
         datasetFieldCompoundValues.add(index, DatasetFieldCompoundValue.createNewEmptyDatasetFieldCompoundValue(this));
     }
 
