@@ -90,7 +90,7 @@
     </div>
     <!-- Edit Mode -->
     <ui:fragment rendered="${(!empty editMode)}">
-        <c:set var="cvManagerURL" value="#{DatasetPage.getCvManagerURL()}"/>
+        <c:set var="CVm" value="#{DatasetPage.getCVMConf()}"/>
         <p:fragment id="editMetadataFragement">
         <o:importFunctions type="java.util.Collections" />
         <div class="panel-group">
@@ -129,7 +129,6 @@
                                                                 <ui:include src="datasetFieldForEditFragment.xhtml">
                                                                     <ui:param name="dsfv" value="#{dsfv}"/>
                                                                     <ui:param name="dsfvIndex" value="#{valCount.index}"/>
-                                                                    <ui:param name="cvMgrUrl" value="#{cvManagerURL}"/>
                                                                 </ui:include>
                                                             </div>
                                                             <!-- Add / Remove buttons -->
@@ -212,7 +211,7 @@
                                                                 <ui:include src="datasetFieldForEditFragment.xhtml">
                                                                     <ui:param name="dsfv" value="#{subdsf.singleValue}"/>
                                                                     <ui:param name="dsfvIndex" value="0"/>
-                                                                    <ui:param name="cvMgrUrl" value="#{cvManagerURL}"/>
+                                                                    <ui:param name="cvMgr" value="#{CVm}"/>
                                                                 </ui:include>
                                                             </ui:fragment>
                                                             <!-- MOVED SELECT ONE TO dataFieldForEdit -->

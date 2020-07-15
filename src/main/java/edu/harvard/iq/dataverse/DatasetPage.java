@@ -1,7 +1,6 @@
 package edu.harvard.iq.dataverse;
 
 import edu.harvard.iq.dataverse.provenance.ProvPopupFragmentBean;
-import edu.harvard.iq.dataverse.PackagePopupFragmentBean;
 import edu.harvard.iq.dataverse.api.AbstractApiBean;
 import edu.harvard.iq.dataverse.authorization.AuthenticationServiceBean;
 import edu.harvard.iq.dataverse.authorization.Permission;
@@ -88,11 +87,9 @@ import java.util.HashSet;
 import javax.faces.model.SelectItem;
 import java.util.logging.Level;
 import edu.harvard.iq.dataverse.datasetutility.WorldMapPermissionHelper;
-import edu.harvard.iq.dataverse.engine.command.DataverseRequest;
 import edu.harvard.iq.dataverse.engine.command.exception.IllegalCommandException;
 import edu.harvard.iq.dataverse.engine.command.impl.AbstractSubmitToArchiveCommand;
 import edu.harvard.iq.dataverse.engine.command.impl.CreateNewDatasetCommand;
-import edu.harvard.iq.dataverse.engine.command.impl.DeleteDataFileCommand;
 import edu.harvard.iq.dataverse.engine.command.impl.GetLatestPublishedDatasetVersionCommand;
 import edu.harvard.iq.dataverse.engine.command.impl.RequestRsyncScriptCommand;
 import edu.harvard.iq.dataverse.engine.command.impl.PublishDatasetResult;
@@ -121,8 +118,6 @@ import org.primefaces.event.CloseEvent;
 import org.primefaces.event.TabChangeEvent;
 import org.primefaces.event.data.PageEvent;
 
-import edu.harvard.iq.dataverse.makedatacount.MakeDataCountUtil;
-import edu.harvard.iq.dataverse.search.FacetCategory;
 import edu.harvard.iq.dataverse.search.FacetLabel;
 import edu.harvard.iq.dataverse.search.SearchConstants;
 import edu.harvard.iq.dataverse.search.SearchFields;
@@ -130,10 +125,7 @@ import edu.harvard.iq.dataverse.search.SearchServiceBean;
 import edu.harvard.iq.dataverse.search.SearchUtil;
 import edu.harvard.iq.dataverse.search.SolrClientService;
 import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.TimeZone;
-import javax.servlet.http.HttpServletRequest;
-import org.apache.solr.client.solrj.SolrClient;
+
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.response.FacetField;
@@ -3296,45 +3288,48 @@ public class DatasetPage implements java.io.Serializable {
 
     }
 
-    private JsonObject getCVMConf(){
+    public class CVM {
+        String url;
+        List<String> vocabs;
+        List<String> keys;
+        public CVM(String url, List<String> vocabs, List<String> keys){
+            this.url = url;
+            this.vocabs = vocabs;
+            this.keys = keys;
+        }
+        public List<String> getVocabs() {
+            return vocabs;
+        }
+        public List<String> getKeys() {
+            return keys;
+        }
+        public String getUrl() {
+            return url;
+        }
+    }
+    public Map<String, CVM> getCVMConf(){
+        Map <String, CVM> cvmMap = new HashMap<>();
         JsonReader jsonReader = Json.createReader(new StringReader(settingsService.getValueForKey(SettingsServiceBean.Key.CVMConf)));
-        JsonObject tgsJsonObject = jsonReader.readObject();
+        JsonArray cvmConfJsonArray = jsonReader.readArray();
         jsonReader.close();
-        return tgsJsonObject;
-    }
+        if (cvmConfJsonArray != null) {
+            for (JsonObject jo : cvmConfJsonArray.getValuesAs(JsonObject.class)) {
+                JsonArray v = jo.getJsonArray("vocabs");
+                List<String> vs = new ArrayList<>();
+                for (JsonString elm: v.getValuesAs(JsonString.class)){
+                    vs.add(elm.getString());
+                }
+                JsonArray k = jo.getJsonArray("keys");
+                List<String> ks = new ArrayList<>();
+                for (JsonString elm: k.getValuesAs(JsonString.class)){
+                    ks.add(elm.getString());
+                }
+                CVM CVm = new CVM(jo.getString("url"), vs, ks);
+                cvmMap.put(jo.getString("aci"), CVm);
 
-    public List<String> getCvManagerKeys(){
-        List<String> keys = new ArrayList();
-        JsonObject cvmConfJsonObject = getCVMConf();
-        if (cvmConfJsonObject != null) {
-            JsonArray k = cvmConfJsonObject.getJsonArray("keys");
-            for (JsonString elm: k.getValuesAs(JsonString.class)){
-                keys.add(elm.getString());
-                logger.info(elm.getString());
             }
         }
-        return keys;
-    }
-
-    public String getCvManagerURL() {
-        JsonObject cvmConfJsonObject = getCVMConf();
-        JsonArray vocabs = cvmConfJsonObject.getJsonArray("vocabs");
-        if (cvmConfJsonObject != null)
-            return cvmConfJsonObject.getString("url");
-        return "";
-    }
-
-    public List<String> getCvManagerVocabs() {
-        List<String> vocabs = new ArrayList();
-        JsonObject cvmConfJsonObject = getCVMConf();
-        if (cvmConfJsonObject != null) {
-            JsonArray v = cvmConfJsonObject.getJsonArray("vocabs");
-            for (JsonString elm: v.getValuesAs(JsonString.class)){
-                vocabs.add(elm.getString());
-                logger.info(elm.getString());
-            }
-        }
-        return vocabs;
+        return cvmMap;
     }
 
     public String save() {
