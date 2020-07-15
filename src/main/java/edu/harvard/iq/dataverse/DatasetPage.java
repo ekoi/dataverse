@@ -52,10 +52,8 @@ import edu.harvard.iq.dataverse.util.JsfHelper;
 import static edu.harvard.iq.dataverse.util.JsfHelper.JH;
 import edu.harvard.iq.dataverse.util.StringUtil;
 import edu.harvard.iq.dataverse.util.SystemConfig;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+
+import java.io.*;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -80,6 +78,8 @@ import javax.inject.Named;
 
 import org.primefaces.event.FileUploadEvent;
 import org.primefaces.model.UploadedFile;
+
+import javax.json.*;
 import javax.validation.ConstraintViolation;
 import org.apache.commons.httpclient.HttpClient;
 //import org.primefaces.context.RequestContext;
@@ -3296,19 +3296,43 @@ public class DatasetPage implements java.io.Serializable {
 
     }
 
-    public String getCvManagerURL() {
-        String cvManagerURL = settingsService.getValueForKey(SettingsServiceBean.Key.CVManagerUrl);
-        if (cvManagerURL != null)
-            return cvManagerURL;
+    private JsonObject getCVMConf(){
+        JsonReader jsonReader = Json.createReader(new StringReader(settingsService.getValueForKey(SettingsServiceBean.Key.CVMConf)));
+        JsonObject tgsJsonObject = jsonReader.readObject();
+        jsonReader.close();
+        return tgsJsonObject;
+    }
 
+    public List<String> getCvManagerKeys(){
+        List<String> keys = new ArrayList();
+        JsonObject cvmConfJsonObject = getCVMConf();
+        if (cvmConfJsonObject != null) {
+            JsonArray k = cvmConfJsonObject.getJsonArray("keys");
+            for (JsonString elm: k.getValuesAs(JsonString.class)){
+                keys.add(elm.getString());
+                logger.info(elm.getString());
+            }
+        }
+        return keys;
+    }
+
+    public String getCvManagerURL() {
+        JsonObject cvmConfJsonObject = getCVMConf();
+        JsonArray vocabs = cvmConfJsonObject.getJsonArray("vocabs");
+        if (cvmConfJsonObject != null)
+            return cvmConfJsonObject.getString("url");
         return "";
     }
 
     public List<String> getCvManagerVocabs() {
         List<String> vocabs = new ArrayList();
-        String cVManagerVocabs = settingsService.getValueForKey(SettingsServiceBean.Key.CVManagerVocabs);
-        if (cVManagerVocabs != null) {
-            vocabs = Arrays.asList(cVManagerVocabs.split(","));
+        JsonObject cvmConfJsonObject = getCVMConf();
+        if (cvmConfJsonObject != null) {
+            JsonArray v = cvmConfJsonObject.getJsonArray("vocabs");
+            for (JsonString elm: v.getValuesAs(JsonString.class)){
+                vocabs.add(elm.getString());
+                logger.info(elm.getString());
+            }
         }
         return vocabs;
     }

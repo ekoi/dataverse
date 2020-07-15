@@ -21,40 +21,32 @@
                              or dsfv.datasetField.datasetFieldType.fieldType == 'DATE'
                              or dsfv.datasetField.datasetFieldType.fieldType == 'EMAIL')}"/>
     <p:watermark for="inputText" value="#{dsfv.datasetField.datasetFieldType.localeWatermark}"></p:watermark>
-    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.name=='keywordVocabulary'}">
-        <div id="akmi-#{valCount.index+1}-Vocabulary">
-            <p:selectOneMenu value="#{dsfv.valueForEdit}" id="inputTextV" tabindex="#{block.index+1}" editable="true">
-                <f:selectItems value="#{DatasetPage.cvManagerVocabs}" />
-            </p:selectOneMenu>
+    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.name==DatasetPage.cvManagerKeys[0]}">
+        <div id="akmi_#{valCount.index+1}_#{DatasetPage.cvManagerKeys[0]}">
+            <p:autoComplete id="acSimple_#{DatasetPage.cvManagerKeys[0]}" value="#{dsfv.valueForEdit}" completeMethod="#{DatasetPage.getCvManagerVocabs()}"
+                            style="width:95%;"/>
         </div>
     </ui:fragment>
-    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.name =='keywordValue' }">
-        <div id="akmi-#{valCount.index+1}-Term">
-            <p:inputText value="#{dsfv.valueForEdit}" id="inputTextTerm" tabindex="#{block.index+1}"
-                         styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
-                         rendered="#{dsfv.datasetField.datasetFieldType.title=='Term'}"/>
+    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.name==DatasetPage.cvManagerKeys[1]}">
+        <div id="akmi_#{valCount.index+1}_#{DatasetPage.cvManagerKeys[1]}">
+            <p:inputText value="#{dsfv.valueForEdit}" id="inputText_#{valCount.index+1}_#{DatasetPage.cvManagerKeys[1]}" tabindex="#{block.index+1}"
+                         styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"/>
         </div>
     </ui:fragment>
-    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.name=='keywordVocabularyURI'}">
-        <div id="akmi-#{valCount.index+1}-keywordVocabularyURI">
-            <p:inputText value="#{dsfv.valueForEdit}" id="inputTextU" tabindex="#{block.index+1}"
-                         styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
-                         rendered="#{dsfv.datasetField.datasetFieldType.title=='Vocabulary URL'}"/>
-
+    <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.name==DatasetPage.cvManagerKeys[2] }">
+        <div id="akmi_#{valCount.index+1}_#{DatasetPage.cvManagerKeys[2]}">
+            <p:inputText value="#{dsfv.valueForEdit}" id="inputText_#{valCount.index+1}_#{DatasetPage.cvManagerKeys[2]}" tabindex="#{block.index+1}"
+                         styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"/>
         </div>
-        <ui:fragment rendered="#{cvManagerURL != '' and dsfv.datasetField.datasetFieldType.title=='Vocabulary URL'}">
-
             <script>
                 $(document).ready(function() {
                 var jsonResult = {};
                     var selectedVocab = "";
-                    $("#akmi-#{valCount.index+1}-Vocabulary").find("select[name*='inputTextV_input']").change(function(){
-                        selectedVocab = $(this).children("option:selected").val();
-                        $("#akmi-#{valCount.index+1}-keywordVocabularyURI").find("input[name*='inputTextU']").val("");
-                        $("#akmi-#{valCount.index+1}-Term").find("input[name*='inputTextTerm']").val("");
-                    });
+                    $("#akmi_#{valCount.index+1}_#{DatasetPage.cvManagerKeys[0]}").find("input[name*='acSimple_#{DatasetPage.cvManagerKeys[0]}']").on("focusout", function(){
+                        selectedVocab = $(this).val();
+                        });
 
-                   $("#akmi-#{valCount.index+1}-Term").find("input[name*='inputTextTerm']").autocomplete({
+                   $("#akmi_#{valCount.index+1}_#{DatasetPage.cvManagerKeys[1]}").find("input[name*='inputText']").autocomplete({
                         source: function(request, response) {
                             $.ajax({
                                 url: "#{cvMgrUrl}?q=" + selectedVocab,
@@ -80,7 +72,7 @@
                         select: function(event, ui) {
                             $.each(jsonResult, function(i, v) {
                                  if (v.term.search(new RegExp(ui.item.value)) != -1) {
-                                    $("#akmi-#{valCount.index+1}-keywordVocabularyURI").find("input[name*='inputTextU']").val(v.url);
+                                    $("#akmi_#{valCount.index+1}_#{DatasetPage.cvManagerKeys[2]}").find("input[name*='inputText']").val(v.url);
                                     return;
                                 }
                             });
@@ -98,7 +90,6 @@
                     z-index: 1500 !important;
                 }
             </style>
-        </ui:fragment>
     </ui:fragment>
     <p:inputTextarea value="#{dsfv.valueForEdit}" id="description" pt:aria-required="#{dsf.required}"
                      rows="5" cols="60" styleClass="form-control"

@@ -195,6 +195,7 @@ public class SettingsServiceBean {
         /**
          * Controlled Vocabulary URL
          */
+        CVMConf,
         CVManagerUrl,
         CVManagerVocabs,
 
