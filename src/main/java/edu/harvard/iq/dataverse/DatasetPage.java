@@ -3309,6 +3309,10 @@ public class DatasetPage implements java.io.Serializable {
     }
     public Map<String, CVM> getCVMConf(){
         Map <String, CVM> cvmMap = new HashMap<>();
+        String cvmSetting = settingsService.getValueForKey(SettingsServiceBean.Key.CVMConf);
+        if (cvmSetting == null || cvmSetting.isEmpty())
+            return cvmMap;
+
         JsonReader jsonReader = Json.createReader(new StringReader(settingsService.getValueForKey(SettingsServiceBean.Key.CVMConf)));
         JsonArray cvmConfJsonArray = jsonReader.readArray();
         jsonReader.close();
