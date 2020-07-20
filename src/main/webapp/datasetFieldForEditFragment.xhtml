@@ -42,17 +42,19 @@
         </div>
         <script>
                 $(document).ready(function() {
-                var jsonResult = {};
+                    var jsonResult = {};
+                    var cvmSourceName = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getSourceName()}";
+                    var cvmSourceUrl = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getSourceUrl()}";
+                    var cvmReqUrl = cvmSourceUrl + "?q=" + cvmSourceName;
                     var selectedVocab = "";
                     $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").on("focusout", function(){
                         selectedVocab = $(this).val();
-                        console.log(selectedVocab);
                         });
 
                    $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[1]}").find("input[name*='inputText']").autocomplete({
                         source: function(request, response) {
                             $.ajax({
-                                url: "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getUrl()}?q=" + selectedVocab,
+                                url: cvmReqUrl + '&amp;voc=' + selectedVocab,
                                 dataType: "json",
                                 data: { code: request.term},
                                 success: function(data) {

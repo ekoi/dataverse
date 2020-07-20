@@ -3289,22 +3289,27 @@ public class DatasetPage implements java.io.Serializable {
     }
 
     public class CVM {
-        String url;
+        String sourceName;
+        String sourceUrl;
         List<String> vocabs;
         List<String> keys;
-        public CVM(String url, List<String> vocabs, List<String> keys){
-            this.url = url;
+        public CVM(String sourceName, String sourceUrl, List<String> vocabs, List<String> keys){
+            this.sourceName = sourceName;
+            this.sourceUrl = sourceUrl;
             this.vocabs = vocabs;
             this.keys = keys;
+        }
+        public String getSourceName() {
+            return sourceName;
+        }
+        public String getSourceUrl() {
+            return sourceUrl;
         }
         public List<String> getVocabs() {
             return vocabs;
         }
         public List<String> getKeys() {
             return keys;
-        }
-        public String getUrl() {
-            return url;
         }
     }
     public Map<String, CVM> getCVMConf(){
@@ -3328,7 +3333,7 @@ public class DatasetPage implements java.io.Serializable {
                 for (JsonString elm: k.getValuesAs(JsonString.class)){
                     ks.add(elm.getString());
                 }
-                CVM CVm = new CVM(jo.getString("url"), vs, ks);
+                CVM CVm = new CVM(jo.getString("source-name"), jo.getString("source-url"), vs, ks);
                 cvmMap.put(jo.getString("aci"), CVm);
 
             }
