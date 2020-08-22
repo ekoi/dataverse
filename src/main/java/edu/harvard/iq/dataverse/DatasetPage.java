@@ -55,10 +55,8 @@ import static edu.harvard.iq.dataverse.util.StringUtil.isEmpty;
 
 import edu.harvard.iq.dataverse.util.StringUtil;
 import edu.harvard.iq.dataverse.util.SystemConfig;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+
+import java.io.*;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -83,6 +81,7 @@ import javax.inject.Named;
 
 import org.primefaces.event.FileUploadEvent;
 import org.primefaces.model.file.UploadedFile;
+import javax.json.*;
 import javax.validation.ConstraintViolation;
 import org.apache.commons.httpclient.HttpClient;
 //import org.primefaces.context.RequestContext;
@@ -3512,7 +3511,60 @@ public class DatasetPage implements java.io.Serializable {
         }
 
     }
-     
+
+    public class CVM {
+        String sourceName;
+        String sourceUrl;
+        List<String> vocabs;
+        List<String> keys;
+        public CVM(String sourceName, String sourceUrl, List<String> vocabs, List<String> keys){
+            this.sourceName = sourceName;
+            this.sourceUrl = sourceUrl;
+            this.vocabs = vocabs;
+            this.keys = keys;
+        }
+        public String getSourceName() {
+            return sourceName;
+        }
+        public String getSourceUrl() {
+            return sourceUrl;
+        }
+        public List<String> getVocabs() {
+            return vocabs;
+        }
+        public List<String> getKeys() {
+            return keys;
+        }
+    }
+    public Map<String, CVM> getCVMConf(){
+        Map <String, CVM> cvmMap = new HashMap<>();
+        String cvmSetting = settingsService.getValueForKey(SettingsServiceBean.Key.CVMConf);
+        if (cvmSetting == null || cvmSetting.isEmpty())
+            return cvmMap;
+
+        JsonReader jsonReader = Json.createReader(new StringReader(settingsService.getValueForKey(SettingsServiceBean.Key.CVMConf)));
+        JsonArray cvmConfJsonArray = jsonReader.readArray();
+        jsonReader.close();
+        if (cvmConfJsonArray != null) {
+            for (JsonObject jo : cvmConfJsonArray.getValuesAs(JsonObject.class)) {
+                JsonArray v = jo.getJsonArray("vocabs");
+                List<String> vs = new ArrayList<>();
+                for (JsonString elm: v.getValuesAs(JsonString.class)){
+                    vs.add(elm.getString());
+                }
+                JsonArray k = jo.getJsonArray("keys");
+                List<String> ks = new ArrayList<>();
+                for (JsonString elm: k.getValuesAs(JsonString.class)){
+                    ks.add(elm.getString());
+                }
+                CVM CVm = new CVM(jo.getString("source-name"), jo.getString("source-url"), vs, ks);
+                cvmMap.put(jo.getString("aci"), CVm);
+
+            }
+        }
+        return cvmMap;
+    }
+
     public String save() {
         //Before dataset saved, write cached prov freeform to version
         if (systemConfig.isProvCollectionEnabled()) {

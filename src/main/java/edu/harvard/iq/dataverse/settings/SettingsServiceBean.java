@@ -193,6 +193,11 @@ public class SettingsServiceBean {
         GuidesBaseUrl,
 
         /**
+         * Controlled Vocabulary URL
+         */
+        CVMConf,
+
+        /**
          * A link to an installation of https://github.com/IQSS/miniverse or
          * some other metrics app.
          */
