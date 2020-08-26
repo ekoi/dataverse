@@ -162,16 +162,21 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
     }
 
     public List<Object[]> getDatasetsAndDownloadsByOwnerId(long id) {
-        String sql = "select (dvo1.authority || '/' || dvo1.identifier) as pid, dvo1.publicationdate, to_char(dvo1.createdate, 'YYYY-MM-DD') as create_date, count(dvo2.owner_id) as num, sum(df.filesize) as size, count(gb.id) as downloads, dvo1.id\n"
+        String sql = "select (dvo1.authority || '/' || dvo1.identifier) as pid, dvo1.publicationdate, to_char(dvo1.createdate, 'YYYY-MM-DD') as create_date, count(dvo2.owner_id) as num, sum(df.filesize) as size, count(gb.id) as downloads, dvo1.id, dfv.value as title\n"
                 + "from dvobject dvo1\n"
                 + "FULL OUTER JOIN dvobject dvo2 on dvo2.owner_id=dvo1.id\n"
                 + "FULL OUTER JOIN datafile df on df.id=dvo2.id\n"
                 + "FULL OUTER JOIN guestbookresponse gb on gb.dataset_id = dvo1.id and df.id = gb.datafile_id\n"
+                + "JOIN datasetversion dsv on dsv.dataset_id=dvo1.id\n"
+                + "JOIN datasetfield dsf on dsf.datasetversion_id = dsv.id and dsf.datasetversion_id in (select id from datasetversion where dataset_id=dvo1.id order by version DESC FETCH FIRST ROW ONLY)\n"
+                + "JOIN datasetfieldvalue dfv on dfv.datasetfield_id = dsf.id\n"
+                + "JOIN datasetfieldtype dft  on dft.id = dsf.datasetfieldtype_id and dft.name='title'"
                 + "where dvo1.dtype='Dataset'\n"
-                + "and dvo2.dtype='DataFile'\n"
+                + "and dvo1.owner_id !=1\n"
+                + "and ( dvo2 is null or dvo2.dtype='DataFile')\n"
                 + "and dvo1.owner_id = " + id + "\n"
-                + "group by dvo1.id, pid, dvo1.publicationdate, create_date order by num;";
-        logger.fine("query - getDatasetsAndDownloadsByOwnerId: " + sql);
+                + "group by dvo1.id, pid, dvo1.publicationdate, create_date, dfv.value order by num;";
+        logger.fine("query - etDatasetsAndDownloadsByOwnerId: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
