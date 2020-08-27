@@ -22,7 +22,7 @@
                              or dsfv.datasetField.datasetFieldType.fieldType == 'URL'
                              or dsfv.datasetField.datasetFieldType.fieldType == 'DATE'
                              or dsfv.datasetField.datasetFieldType.fieldType == 'EMAIL')}"/>
-    <p:watermark for="inputText" value="mbeeeek#{dsfv.datasetField.datasetFieldType.localeWatermark}"></p:watermark>
+    <p:watermark for="inputText" value="#{dsfv.datasetField.datasetFieldType.localeWatermark}"></p:watermark>
     <ui:fragment rendered="#{displayCV and dsfv.datasetField.datasetFieldType.name==cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}">
         <div id="akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}">
             <p:autoComplete id="acSimple_#{valCount.index+1}_k" value="#{dsfv.valueForEdit}"
