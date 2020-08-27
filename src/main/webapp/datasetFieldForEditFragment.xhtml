@@ -22,10 +22,11 @@
                              or dsfv.datasetField.datasetFieldType.fieldType == 'URL'
                              or dsfv.datasetField.datasetFieldType.fieldType == 'DATE'
                              or dsfv.datasetField.datasetFieldType.fieldType == 'EMAIL')}"/>
-    <p:watermark for="inputText" value="#{dsfv.datasetField.datasetFieldType.localeWatermark}"></p:watermark>
+    <p:watermark for="inputText" value="mbeeeek#{dsfv.datasetField.datasetFieldType.localeWatermark}"></p:watermark>
     <ui:fragment rendered="#{displayCV and dsfv.datasetField.datasetFieldType.name==cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}">
         <div id="akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}">
-            <p:autoComplete id="acSimple_#{valCount.index+1}_k" value="#{dsfv.valueForEdit}" completeMethod="#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs()}"
+            <p:autoComplete id="acSimple_#{valCount.index+1}_k" value="#{dsfv.valueForEdit}"
+                            completeMethod="#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs()}"
                             style="width:95%;"/>
         </div>
     </ui:fragment>
@@ -47,6 +48,14 @@
                     var cvmSourceUrl = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getSourceUrl()}";
                     var cvmReqUrl = cvmSourceUrl + "?q=" + cvmSourceName;
                     var selectedVocab = "";
+                    var vocabFieldValue = $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").val();
+                    if (vocabFieldValue =='' ) {
+                        var autocompleVocabSize = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs().size()}";
+                        if(autocompleVocabSize == 1) {
+                            var initVocabFielValue = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs()[0]}"
+                            $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").val(initVocabFielValue);
+                        }
+                    }
                     $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").on("focusout", function(){
                         selectedVocab = $(this).val();
                         });
