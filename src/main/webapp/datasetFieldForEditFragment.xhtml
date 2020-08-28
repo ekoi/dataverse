@@ -52,14 +52,14 @@
                     if (vocabFieldValue =='' ) {
                         var autocompleVocabSize = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs().size()}";
                         if(autocompleVocabSize == 1) {
-                            var initVocabFielValue = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs()[0]}"
-                            $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").val(initVocabFielValue);
+                            selectedVocab = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs()[0]}";
+                            $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").val(selectedVocab);
                         }
                     }
                     $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").on("focusout", function(){
-                        selectedVocab = $(this).val();
+                          selectedVocab = $(this).val();
                         });
-
+                        
                    $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[1]}").find("input[name*='inputText']").autocomplete({
                         source: function(request, response) {
                             $.ajax({
