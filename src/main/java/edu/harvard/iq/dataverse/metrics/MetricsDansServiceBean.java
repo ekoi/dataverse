@@ -176,7 +176,7 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "and ( dvo2 is null or dvo2.dtype='DataFile')\n"
                 + "and dvo1.owner_id = " + id + "\n"
                 + "group by dvo1.id, pid, dvo1.publicationdate, create_date, dfv.value order by num;";
-        logger.fine("query - etDatasetsAndDownloadsByOwnerId: " + sql);
+        logger.fine("query - getDatasetsAndDownloadsByOwnerId: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
