@@ -279,7 +279,8 @@ public class MetricsDans extends AbstractApiBean {
                             status = "Draft";
                         int dsId = (int) ds[6];
                         String path = metricsSvc.getPath(dsId);
-                        DsReport dsReport = new DsReport((String) dv[1], (String) dv[2], path, (String) ds[0], status, (String) ds[2], (long) ds[3], ((BigDecimal) ds[4]).longValue(), (long) ds[5]);
+                        long storagesize = ((ds[4] == null) ? 0:((BigDecimal) ds[4]).longValue());
+                        DsReport dsReport = new DsReport((String) dv[1], (String) dv[2], path, (String) ds[0], (String) ds[7], status, (String) ds[2], (long) ds[3], storagesize, (long) ds[5]);
                         dsReports.add(dsReport);
                     }
                 });
@@ -527,6 +528,7 @@ public class MetricsDans extends AbstractApiBean {
             jobPublished.add("dvAlias", dsReport.dvAlias);
             jobPublished.add("dvPath", dsReport.dvPath);
             jobPublished.add("pid", dsReport.pid);
+            jobPublished.add("dsTitle", dsReport.title);
             jobPublished.add("createDate", dsReport.createDate);
             jobPublished.add("status", dsReport.status);
             jobPublished.add("numberOfFiles", dsReport.numberOfFiles);
@@ -711,17 +713,19 @@ public class MetricsDans extends AbstractApiBean {
         private String dvAlias;
         private String dvPath;
         private String pid;
+        private String title;
         private String status;
         private String createDate;
         private long numberOfFiles;
         private long storageSize;
         private long totalDownloads;
 
-        public DsReport(String dvName, String dvAlias, String dvPath, String pid, String status, String createDate,  long numberOfFiles, long storageSize, long totalDownloads) {
+        public DsReport(String dvName, String dvAlias, String dvPath, String pid, String title, String status, String createDate,  long numberOfFiles, long storageSize, long totalDownloads) {
             this.dvName = dvName;
             this.dvAlias = dvAlias;
             this.dvPath = dvPath;
             this.pid = pid;
+            this.title = title;
             this.status = status;
             this.createDate = createDate;
             this.numberOfFiles = numberOfFiles;
