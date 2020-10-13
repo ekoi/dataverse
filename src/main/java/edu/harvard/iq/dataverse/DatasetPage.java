@@ -5,10 +5,6 @@ import edu.harvard.iq.dataverse.PackagePopupFragmentBean;
 import edu.harvard.iq.dataverse.api.AbstractApiBean;
 import edu.harvard.iq.dataverse.authorization.AuthenticationServiceBean;
 import edu.harvard.iq.dataverse.authorization.Permission;
-import edu.harvard.iq.dataverse.authorization.RoleAssignmentSet;
-import edu.harvard.iq.dataverse.authorization.groups.Group;
-import edu.harvard.iq.dataverse.authorization.groups.GroupServiceBean;
-import edu.harvard.iq.dataverse.authorization.groups.impl.explicit.ExplicitGroup;
 import edu.harvard.iq.dataverse.authorization.providers.builtin.BuiltinUserServiceBean;
 import edu.harvard.iq.dataverse.authorization.users.ApiToken;
 import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
@@ -63,11 +59,8 @@ import java.io.InputStream;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -78,7 +71,6 @@ import java.util.logging.Logger;
 import javax.ejb.EJB;
 import javax.ejb.EJBException;
 import javax.faces.application.FacesMessage;
-import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ValueChangeEvent;
@@ -93,10 +85,8 @@ import org.apache.commons.httpclient.HttpClient;
 //import org.primefaces.context.RequestContext;
 import java.util.Arrays;
 import java.util.HashSet;
-
 import javax.faces.model.SelectItem;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
 import edu.harvard.iq.dataverse.datasetutility.WorldMapPermissionHelper;
 import edu.harvard.iq.dataverse.engine.command.DataverseRequest;
 import edu.harvard.iq.dataverse.engine.command.exception.IllegalCommandException;
@@ -230,10 +220,6 @@ public class DatasetPage implements java.io.Serializable {
     @EJB
     ExternalToolServiceBean externalToolService;
     @EJB
-    MailServiceBean mailServiceBean;
-    @EJB
-    GroupServiceBean groupService;
-    @EJB
     SolrClientService solrClientService;
     @Inject
     DataverseRequestServiceBean dvRequestService;
@@ -292,16 +278,6 @@ public class DatasetPage implements java.io.Serializable {
     private String protocol = "";
     private String authority = "";
     private String customFields="";
-
-    // DANS bridge archiving
-    private boolean dataverseBridgeEnabled;
-    private String swordGroupAlias;
-    private String darName;
-    private List<String> darNameList;
-    private String darUsername;
-    private String darPassword;
-    private String darUserAffiliation;
-    private boolean displayArchivedColumn;
 
     private boolean noDVsAtAll = false;
 
@@ -688,7 +664,7 @@ public class DatasetPage implements java.io.Serializable {
         }
         // The version is SUPPOSED to be indexed if it's the latest published version, or a 
         // draft. So if none of the above is true, we return false right away:
-
+        
         if (!(workingVersion.isDraft() || isThisLatestReleasedVersion())) {
             return isIndexedVersion = false; 
         }
@@ -1649,7 +1625,7 @@ public class DatasetPage implements java.io.Serializable {
             
             if (oneDSFieldTypeInputLevel != null) {
                 // Is the DatasetField in the hash?    hash format: {  DatasetFieldType.id : DatasetField }
-                DatasetField dsf = mapDatasetFields.get(oneDSFieldTypeInputLevel.getDatasetFieldType().getId());
+                DatasetField dsf = mapDatasetFields.get(oneDSFieldTypeInputLevel.getDatasetFieldType().getId());  
                 if (dsf != null){
                     // Yes, call "setInclude"
                     dsf.setInclude(oneDSFieldTypeInputLevel.isInclude());
@@ -1864,7 +1840,7 @@ public class DatasetPage implements java.io.Serializable {
             }
 
             // Is the Dataset harvested?
-
+            
             if (dataset.isHarvested()) {
                 // if so, we'll simply forward to the remote URL for the original
                 // source of this harvested dataset:
@@ -1954,7 +1930,7 @@ public class DatasetPage implements java.io.Serializable {
                     }
                 }
 
-            }
+            }                       
         } else if (ownerId != null) {
             // create mode for a new child dataset
             readOnly = false; 
@@ -1969,7 +1945,7 @@ public class DatasetPage implements java.io.Serializable {
             } else if (!permissionService.on(dataset.getOwner()).has(Permission.AddDataset)) {
                 return permissionsWrapper.notAuthorized(); 
             }
-
+                        
             dataverseTemplates.addAll(dataverseService.find(ownerId).getTemplates());
             if (!dataverseService.find(ownerId).isTemplateRoot()) {
                 dataverseTemplates.addAll(dataverseService.find(ownerId).getParentTemplates());
@@ -2063,10 +2039,6 @@ public class DatasetPage implements java.io.Serializable {
                 break;
             }
         }
-
-        // DANS Bridge archiving
-        initBridgeArchiving();
-
         //Show ingest success message if refresh forces a page reload after ingest success
         //This is needed to display the explore buttons (the fileDownloadHelper needs to be reloaded via page 
         if (showIngestSuccess) {
@@ -2082,74 +2054,7 @@ public class DatasetPage implements java.io.Serializable {
         
         return null;
     }
-
-    /** initialise the DANS Bridge archiving option */
-    private void initBridgeArchiving() {
-        List<DatasetVersion> dvs = dataset.getVersions();
-        for (DatasetVersion dv:dvs) {
-            if (dv.getDarNote() != null) {
-                displayArchivedColumn = true;
-                break;
-            }
-        }
-        logger.fine("Bridge archiving button related processing");
-        if (isSessionUserAuthenticated() && workingVersion.isReleased()
-                && settingsService.getValueForKey(SettingsServiceBean.Key.DataverseBridgeConf) != null) {
-            logger.fine("Check roles for bridge");
-            RoleAssignmentSet rs = dataverseRoleService.roleAssignments(session.getUser(), dataset.getOwner());
-            if (!isUserHasAdminRole(rs))
-                return;// null;
-            logger.fine("Processing bridge settings");
-            darNameList = new ArrayList<>();
-            DataverseBridge dbd = new DataverseBridge(((AuthenticatedUser) session.getUser()).getEmail(), settingsService, datasetService, datasetVersionService, authService, mailServiceBean);
-            DataverseBridge.DataverseBridgeSetting dataverseBridgeSetting = dbd.getDataverseBridgeSetting();
-            List<DataverseBridge.DarSetting> darSettingList = dataverseBridgeSetting.getDarSettings();
-            if (darSettingList.isEmpty()) {
-                logger.fine("No bridge archives found in settings");
-                swordGroupAlias = null;
-            } else if (darSettingList.size() == 1) {
-                logger.fine("One bridge archive found in settings");
-                DataverseBridge.DarSetting darSetting = darSettingList.get(0);
-                swordGroupAlias = getSwordUserGroupAlias(rs, darSetting.getUserGroups());
-                DataverseBridge.DarUser darUser = darSetting.getDarUsers().stream().filter(j-> j.getGroupName().equals(swordGroupAlias)).findAny().orElse(null);
-                if (darUser != null) {
-                    darName = darSetting.getDarName();
-                    darNameList.add(darSetting.getDarName());
-                    darUsername = darUser.getDarUsername();
-                    darPassword = darUser.getDarPassword();
-                    darUserAffiliation = darUser.getDarUsernameAffiliation();
-                }
-            } else {
-                logger.fine("Several bridge archives found in settings");
-                List<String> userGroupList = dataverseBridgeSetting.getDarSettings().stream().map(x -> x.getUserGroups()).flatMap(
-                        Collection::stream).collect(Collectors.toList());
-                swordGroupAlias = getSwordUserGroupAlias(rs, userGroupList);
-            }
-            dataverseBridgeEnabled = (swordGroupAlias != null);
-            if (dataverseBridgeEnabled) {
-                logger.fine("Bridge is initially enabled");
-                for (DatasetVersion dv:dvs) {
-                    String darNote = dv.getDarNote();
-                    if (darNote != null && (darNote.equals(DataverseBridge.StateEnum.INVALID.toString())
-                            || darNote.equals(DataverseBridge.StateEnum.FAILED.toString())
-                            || darNote.equals(DataverseBridge.StateEnum.REJECTED.toString()))){
-                        dataverseBridgeEnabled = false;
-                        logger.fine("Bridge is disabled because of failed archiving");
-                        break;
-                    }
-                }
-            }
-
-            if (dataverseBridgeEnabled && workingVersion.getDarNote() != null && workingVersion.getDarNote().startsWith(DataverseBridge.StateEnum.IN_PROGRESS.toString())) {
-                String darName = workingVersion.getDarNote().split("@")[1];
-                String dvBaseMetadataUrl = dataverseBridgeSetting.getMetadataUrl();
-                DataverseBridge.StateEnum state = dbd.checkArchivingProgress(dvBaseMetadataUrl ,persistentId, workingVersion.getFriendlyVersionNumber(), darName);
-                logger.fine("Archiving state of '" + persistentId + "': " + state);
-            }
-        }
-
-    }
-
+    
     private Boolean fileTreeViewRequired = null; 
     
     public boolean isFileTreeViewRequired() {
@@ -2245,7 +2150,7 @@ public class DatasetPage implements java.io.Serializable {
                             // create a new folder node:
                             currentNode = createFolderTreeNode(subfolders[level], currentNode);
                             folderMap.put(folderPath, currentNode);
-                            // all the folders, except for the top-level root node
+                            // all the folders, except for the top-level root node 
                             // are collapsed by default:
                             currentNode.setExpanded(expandFolders);
 
@@ -2256,74 +2161,16 @@ public class DatasetPage implements java.io.Serializable {
                     // As soon as we reach the first folder containing files, we want
                     // to have all the other folders collapsed by default:
                     if (expandFolders) {
-                        expandFolders = false;
+                        expandFolders = false; 
                     }
                 }
             }
         }
-
-        folderMap = null;
+        
+        folderMap = null; 
 
     }
-
-    public void reload() throws IOException {
-        ExternalContext ec = FacesContext.getCurrentInstance().getExternalContext();
-        ec.redirect("");
-    }
-
-    public String getSwordGroupAlias() {
-        return swordGroupAlias;
-    }
-
-    public String getDarName() {
-        return darName;
-    }
-
-    public List<String> getDarNameList() {
-        return darNameList;
-    }
-
-    public String getDarUsername() {
-        return darUsername;
-    }
-
-    public String getDarPassword() {
-        return darPassword;
-    }
-
-    public String getDarUserAffiliation() {
-        return darUserAffiliation;
-    }
-
-    public boolean isDisplayArchivedColumn() {
-        return displayArchivedColumn;
-    }
-
-    private String getSwordUserGroupAlias(RoleAssignmentSet rs, List<String> userGroups) {
-        Set<Group> sg = groupService.groupsFor( rs.getRoleAssignee(), dataset.getOwner());
-        for (Group g:sg){
-            if (g instanceof ExplicitGroup && userGroups.contains(((ExplicitGroup)g).getGroupAliasInOwner())) {
-                    return ((ExplicitGroup)g).getGroupAliasInOwner();
-            }
-        }
-        return null;
-    }
-
-    private boolean isUserHasAdminRole( RoleAssignmentSet rs) {
-        Set<RoleAssignment> sra = rs.getAssignments();
-        for(RoleAssignment r:sra ){
-           if (r.getRole().getAlias().equals("admin")) {
-               return true;
-           }
-        }
-        return false;
-    }
-
-    public boolean isDataverseBridgeEnabled() {
-        return dataverseBridgeEnabled;
-    }
-
-
+    
     private DefaultTreeNode createFolderTreeNode(String name, TreeNode parent) {
         // For a tree node representing a folder, we use its name, as a String, 
         // as the node data payload. (meaning, in the xhtml the folder name can
@@ -2354,8 +2201,8 @@ public class DatasetPage implements java.io.Serializable {
     public boolean isHasTabular() {
         return hasTabular;
     }
-
-
+    
+    
     public boolean isReadOnly() {
         return readOnly; 
     }
@@ -2888,7 +2735,7 @@ public class DatasetPage implements java.io.Serializable {
             datafileService.finalizeFileDeletes(deleteStorageLocations);
             JsfHelper.addSuccessMessage(BundleUtil.getStringFromBundle("dataset.message.deleteSuccess"));
         }
-
+        
         return "/dataverse.xhtml?alias=" + dataset.getOwner().getAlias() + "&faces-redirect=true";
     }
     
@@ -3032,34 +2879,6 @@ public class DatasetPage implements java.io.Serializable {
                 startMultipleFileDownload();
             }
             return;
-        }
-        
-        // Note that the GuestbookResponse object may still have information from 
-        // the last download action performed by the user. For example, it may 
-        // still have the non-null Datafile in it, if the user has just downloaded
-        // a single file; or it may still have the format set to "original" - 
-        // even if that's not what they are trying to do now. 
-        // So make sure to reset these values:
-        guestbookResponse.setDataFile(null);
-        guestbookResponse.setSelectedFileIds(getSelectedDownloadableFilesIdsString());
-        if (downloadOriginal) {
-            guestbookResponse.setFileFormat("original");
-        } else {
-            guestbookResponse.setFileFormat("");
-        }
-        guestbookResponse.setDownloadtype("Download");
-        
-        // If we have a bunch of files that we can download, AND there were no files 
-        // that we had to take off the list, because of permissions - we can 
-        // either send the user directly to the download API (if no guestbook/terms
-        // popup is required), or send them to the download popup:
-        if(!getSelectedDownloadableFiles().isEmpty() && getSelectedNonDownloadableFiles().isEmpty()){
-            if (guestbookRequired){
-                openDownloadPopupForMultipleFileDownload();
-            } else {
-                startMultipleFileDownload();
-            }
-            return;
         } 
         
         // ... and if some files were restricted, but some are downloadable, 
@@ -3140,7 +2959,7 @@ public class DatasetPage implements java.io.Serializable {
         return arguments;
     }
     
-
+        
     public void saveLinkingDataverses(ActionEvent evt) {
 
         if (saveLink(selectedDataverseForLinking)) {
@@ -3382,7 +3201,7 @@ public class DatasetPage implements java.io.Serializable {
                             } catch (CommandException e){
                                  //this command is here to delete the identifier of unreleased files
                                  //if it fails then a reserved identifier may still be present on the remote provider
-                            }
+                            }                           
                         } */
                         fmit.remove();
                         break;
@@ -3555,7 +3374,7 @@ public class DatasetPage implements java.io.Serializable {
             populateDatasetUpdateFailureMessage();
             return returnToDraftVersion();
         }
-
+        
         // Have we just deleted some draft datafiles (successfully)? 
         // finalize the physical file deletes:
         // (DataFileService will double-check that the datafiles no 
@@ -3565,7 +3384,7 @@ public class DatasetPage implements java.io.Serializable {
         if (deleteStorageLocations != null) {
             datafileService.finalizeFileDeletes(deleteStorageLocations);
         }
-
+        
         if (editMode != null) {
             if (editMode.equals(EditMode.CREATE)) {
                 // We allow users to upload files on Create: 
@@ -3697,8 +3516,8 @@ public class DatasetPage implements java.io.Serializable {
     
     private String returnToDatasetOnly(){
          dataset = datasetService.find(dataset.getId());
-         editMode = null;
-         return "/dataset.xhtml?persistentId=" + dataset.getGlobalId().asString() +  "&faces-redirect=true";
+         editMode = null;         
+         return "/dataset.xhtml?persistentId=" + dataset.getGlobalId().asString() +  "&faces-redirect=true";    
     }
     
     private String returnToDraftVersion(){      
@@ -3887,7 +3706,7 @@ public class DatasetPage implements java.io.Serializable {
         }
         return lockedFromEditsVar;
     }
-
+    
     /**
     Need to save ingest lock state to display success later.
      */
@@ -3898,7 +3717,7 @@ public class DatasetPage implements java.io.Serializable {
         return lockedFromEditsVar;
     }
     
-
+    
     // TODO: investigate why this method was needed in the first place?
     // It appears that it was written under the assumption that downloads 
     // should not be allowed when a dataset is locked... (why?)
@@ -4214,7 +4033,7 @@ public class DatasetPage implements java.io.Serializable {
             String formatName = provider[1];
             String formatDisplayName = provider[0];
             
-            Exporter exporter = null;
+            Exporter exporter = null; 
             try {
                 exporter = ExportService.getInstance(settingsService).getExporter(formatName);
             } catch (ExportException ex) {
@@ -5342,7 +5161,7 @@ public class DatasetPage implements java.io.Serializable {
         org.primefaces.component.datatable.DataTable dt = (org.primefaces.component.datatable.DataTable) facesContext.getViewRoot().findComponent("datasetForm:tabView:filesTable");
         setFilePaginatorPage(dt.getPage());      
         setRowsPerPage(dt.getRowsToRender());
-    }
+    }  
     
     /**
      * This method can be called from *.xhtml files to allow archiving of a dataset

@@ -608,12 +608,6 @@
             <artifactId>opennlp-tools</artifactId>
             <version>1.9.1</version>
         </dependency>
-        <!--DANS DataverseBridge -->
-        <dependency>
-            <groupId>io.reactivex.rxjava2</groupId>
-            <artifactId>rxjava</artifactId>
-            <version>2.1.5</version>
-        </dependency>
     </dependencies>
     <build>
         <!--        <testResources>

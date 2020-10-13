@@ -151,12 +151,11 @@ public class DatasetVersion implements Serializable {
     //@ValidateURL() - this validation rule was making a bunch of older legacy datasets invalid;
     // removed pending further investigation (v4.13)
     private String archiveNote;
-
+    
     @Column(nullable=true, columnDefinition = "TEXT")
     private String archivalCopyLocation;
-
-    private String darNote;
-
+    
+    
     private String deaccessionLink;
 
     @Transient
@@ -291,14 +290,6 @@ public class DatasetVersion implements Serializable {
 
     public void setDeaccessionLink(String deaccessionLink) {
         this.deaccessionLink = deaccessionLink;
-    }
-
-    public String getDarNote() {
-        return darNote;
-    }
-
-    public void setDarNote(String darNote) {
-        this.darNote = darNote;
     }
 
     public GlobalId getDeaccessionLinkAsGlobalId() {

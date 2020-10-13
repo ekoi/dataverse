@@ -369,7 +369,6 @@ public class SettingsServiceBean {
          */
         FilePIDsEnabled,
 
-
         /**
          * Indicates if the Handle service is setup to work 'independently' (No communication with the Global Handle Registry)
          */
@@ -403,11 +402,7 @@ public class SettingsServiceBean {
          * inheritance. "*" means inherit assignments for all roles
          */
         InheritParentRoleAssignments,
-        /**
-         * DANS addition for the Bridge
-         */
-        DataverseBridgeConf,
-
+        
         /** Make Data Count Logging and Display */
         MDCLogPath, 
         DisplayMDCMetrics,
