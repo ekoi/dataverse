@@ -11,9 +11,12 @@ import edu.harvard.iq.dataverse.authorization.providers.shib.ShibServiceBean;
 import edu.harvard.iq.dataverse.authorization.providers.shib.ShibUserNameFields;
 import edu.harvard.iq.dataverse.authorization.providers.shib.ShibUtil;
 import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
+import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
 import edu.harvard.iq.dataverse.util.BundleUtil;
 import edu.harvard.iq.dataverse.util.JsfHelper;
 import edu.harvard.iq.dataverse.util.SystemConfig;
+import org.apache.commons.lang.StringUtils;
+
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -51,7 +54,7 @@ public class Shib implements java.io.Serializable {
     @EJB
     UserNotificationServiceBean userNotificationService;
     @EJB
-    DatasetFieldServiceBean datasetFieldService;
+    SettingsServiceBean settingsService;
 
     HttpServletRequest request;
 
@@ -210,10 +213,11 @@ public class Shib implements java.io.Serializable {
         internalUserIdentifer = ShibUtil.generateFriendlyLookingUserIdentifer(usernameAssertion, emailAddress);
         logger.fine("friendly looking identifer (backend will enforce uniqueness):" + internalUserIdentifer);
 
-        //String affiliation = shibService.getAffiliation(shibIdp, shibService.getDevShibAccountType());
-        String affiliation = getValueFromAssertion("schacHomeOrganization");
-        if (affiliation == null || affiliation.isEmpty())
-        	affiliation = shibService.getAffiliation(shibIdp, shibService.getDevShibAccountType());
+        String shibAffiliationAttribute = settingsService.getValueForKey(SettingsServiceBean.Key.ShibAffiliationAttribute);
+        String affiliation = (StringUtils.isNotBlank(shibAffiliationAttribute))
+            ? getValueFromAssertion(shibAffiliationAttribute)
+            : shibService.getAffiliation(shibIdp, shibService.getDevShibAccountType());
+
         if (affiliation != null) {
         	DatasetFieldType dsft =datasetFieldService.findByName("producer");
             ControlledVocabularyValue cvv = datasetFieldService.findControlledVocabularyValueByDatasetFieldTypeAndIdentifier(dsft, "@" + affiliation);

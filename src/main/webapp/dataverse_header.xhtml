@@ -87,7 +87,7 @@
                     </ui:fragment>
                         <ui:fragment rendered="#{empty settingsWrapper.get(':NavbarSupportUrl')}">
                             <o:form useRequestURI="true" class="navbar-form navbar-left navbar-form-link">
-                                <p:commandLink oncomplete="PF('contactForm').show()" update=":contactDialog" actionListener="#{sendFeedbackDialog.initUserInput}">
+                                <p:commandLink oncomplete="PF('contactForm').show()" update=":contactDialog" actionListener="#{sendFeedbackDialog.initUserInput}" id="headerSupportLink">
                                     <f:setPropertyActionListener target="#{sendFeedbackDialog.messageSubject}" value=""/>
                                     <f:setPropertyActionListener target="#{sendFeedbackDialog.recipient}" value="#{null}"/>
                                     <f:setPropertyActionListener target="#{sendFeedbackDialog.userMessage}" value=""/>
@@ -218,21 +218,13 @@
                 <div class="dataverseHeaderCell dataverseHeaderLogo" jsf:rendered="#{!empty dataverse.dataverseTheme.logo and dataverse.dataverseTheme.logoFormat == 'SQUARE'}">
                     <img src="/logos/#{dataverse.logoOwnerId}/#{dataverse.dataverseTheme.logo}" alt="#{of:format1(bundle['alt.logo'], dataverse.name)}"/>
                 </div>
-
-                <!-- DANS addition - when at root verse (DataverseNL) show logo, otherwise show text. Note that logo is not in navbar when at root verse -->
-                <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{!empty dataverse.name} and dataverse.name!='DataverseNL'">
+                <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{editModeDataverse == 'CREATE'}">
+                    <h:outputText styleClass="dataverseHeaderDataverseName" value="#{bundle.newDataverse}"/>
+                </div>
+                <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{editModeDataverse != 'CREATE'}">
                     <a href="/dataverse/#{dataverse.alias}" class="dataverseHeaderDataverseName" style="color:##{!empty dataverse.dataverseTheme.linkColor ? dataverse.dataverseTheme.linkColor : '428bca'};">#{dataverse.name}</a>
                     <h:outputText style="color:##{!empty dataverse.dataverseTheme.textColor ? dataverse.dataverseTheme.textColor : '888888'};" value=" (#{dataverse.affiliation})" rendered="#{!empty dataverse.affiliation}"/>
                     <h:outputText value="#{bundle.unpublished}" styleClass="label label-warning label-unpublished" rendered="#{!dataverse.released}"/>
-                </div>
-                <div class="dataverseHeaderCell dataverseHeaderName" style="padding-top:10px;padding-bottom:10px;!important" jsf:rendered="#{!empty dataverse.name and dataverse.name=='DataverseNL'}">
-                <a href="/">
-                    <img height="40%" width="40%" src="/resources/images/DataversNL-logo.png"/>
-                    </a>
-                </div>
-
-                <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{empty dataverse.name}">
-                    <h:outputText styleClass="dataverseHeaderDataverseName" value="#{bundle.newDataverse}"/>
                 </div>
                 <div class="dataverseHeaderCell dataverseHeaderTagline" jsf:rendered="#{!empty dataverse.dataverseTheme.tagline and empty dataverse.dataverseTheme.linkUrl}">
                     <h:outputText escape="false" style="color:##{!empty dataverse.dataverseTheme.textColor ? dataverse.dataverseTheme.textColor : '888888'};" value="#{StringEscapeUtils:escapeHtml(dataverse.dataverseTheme.tagline)}" />
