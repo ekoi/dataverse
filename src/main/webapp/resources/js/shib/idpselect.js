@@ -1666,7 +1666,7 @@ function IdPSelectUI() {
         //if (preferredTile) {
             // buildTextDiv(idpListDiv, 'idpList.label');
         //} else {
-            buildTextDiv(idpListDiv, 'idpList.NoPreferred.label');
+            // buildTextDiv(idpListDiv, 'idpList.NoPreferred.label');
         //}
 
         idpSelect = document.createElement('select');

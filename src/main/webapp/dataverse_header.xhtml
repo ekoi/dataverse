@@ -108,16 +108,19 @@
                                 </h:form>
                             </ul>
                         </li>
-
                         <ui:fragment rendered="#{!dataverseSession.user.authenticated}">
-                            <!-- DANS - removed signup -->
+                            <li>
+                                <h:outputLink rendered="#{dataverseHeaderFragment.signupAllowed}"
+                                              value="#{dataverseHeaderFragment.getSignupUrl(navigationWrapper.redirectPage)}">
+                                    #{bundle['header.signUp']}
+                                </h:outputLink>
+                            </li>
                             <li>
                                 <h:outputLink value="/loginpage.xhtml?#{loginRedirectPage}">
                                     #{bundle.login}
                                 </h:outputLink>
                             </li>
                         </ui:fragment>
-                        
                         <ui:fragment rendered="#{dataverseSession.user.authenticated}">
                             <li class="dropdown accountName">
                                 <a href="#" id="lnk_header_account_dropdown" class="dropdown-toggle" data-toggle="dropdown" role="menu" aria-haspopup="true" aria-expanded="false">
@@ -310,13 +313,6 @@
                     <!--change this to <h:messages id="messages"/> to see otherwise hidden errors such as `Conversion Error setting value 'foo.jpg' for 'null Converter'`-->
                 </ui:remove>
                 <iqbs:messages id="messages" collapsible="true" />
-            </div>
-            <!-- DANS addition -->
-            <div class="container messagePanel" jsf:rendered="#{DataverseUserPage.editMode == 'CREATE' and DataverseUserPage.nonLocalLoginEnabled}">
-                <div class="alert alert-dismissable alert-info" style="font-size:20px;">
-                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                    <span class="glyphicon glyphicon-info-sign"></span><strong> Please use your </strong><a style="font-size:18px;" class="btn btn-default" href="/Shibboleth.sso/Login?SAMLDS=1&amp;target=#{systemConfig.dataverseSiteUrl}/ms/ShibAttributesHandler"><strong>institutional account</strong></a><strong>. Only if your institute isn't connected via SURFconext, create an account.</strong>
-                </div>
             </div>
         </p:fragment>
     </div>
