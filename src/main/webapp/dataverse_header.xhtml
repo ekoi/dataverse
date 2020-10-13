@@ -21,8 +21,6 @@
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
                     </button>
-                    <!-- DANS - only show logo in nav bar when NOT in root verse (DataverseNL) or when creating -->
-                    <div jsf:rendered="#{dataverse.name!='DataverseNL' or DataverseUserPage.editMode=='CREATE'}">
                     <a href="/">
                         <ui:fragment rendered="#{empty settingsWrapper.get(':LogoCustomizationFile')}">
                             <span class="navbar-brand" tabindex="1"><span id="icon-dataverse" class="icon-dataverse"></span> #{bundle.dataverse}</span>
@@ -30,7 +28,6 @@
                         <h:graphicImage rendered="#{!empty settingsWrapper.get(':LogoCustomizationFile')}"
                             url="#{settingsWrapper.get(':LogoCustomizationFile')}" styleClass="navbar-brand custom-logo" alt="#{of:format1(bundle['alt.homepage'], dataverseServiceBean.findRootDataverse().name)}"/>
                     </a>
-                    </div>
                 </div>
                 <div class="collapse navbar-collapse" id="topNavBar">
                     <ul class="nav navbar-nav navbar-right">
@@ -76,15 +73,11 @@
                                 <h:outputText value="#{bundle['header.guides.user']}"/>
                             </h:outputLink>
                         </li>
-                    <!-- DANS don't show bar if url is empty -->
-                    <ui:fragment rendered="#{!empty settingsWrapper.get(':NavbarSupportUrl')}">
-
                         <li jsf:rendered="#{!empty settingsWrapper.get(':NavbarSupportUrl')}">
                             <h:outputLink value="#{settingsWrapper.get(':NavbarSupportUrl')}" target="_blank" rel="noopener">
                                 <h:outputText value="#{bundle['header.support']}"/>
                             </h:outputLink>
                         </li>
-                    </ui:fragment>
                         <ui:fragment rendered="#{empty settingsWrapper.get(':NavbarSupportUrl')}">
                             <o:form useRequestURI="true" class="navbar-form navbar-left navbar-form-link">
                                 <p:commandLink oncomplete="PF('contactForm').show()" update=":contactDialog" actionListener="#{sendFeedbackDialog.initUserInput}" id="headerSupportLink">
