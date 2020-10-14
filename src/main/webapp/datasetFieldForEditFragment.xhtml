@@ -10,10 +10,12 @@
     <ui:remove>
     <!-- input text start UPDATE: UI:REMOVE applied due to duplicate ID errors, left code as reference incase test scripts complain -->
     <span id="pre-input-#{dsf.datasetFieldType.name}" class="pre-input-tag"/></ui:remove>
-    
+    <c:set var="displayCV" value="#{cvMgr.size() > 0 and (dsfv.datasetField.datasetFieldType.name ==cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]
+                    or dsfv.datasetField.datasetFieldType.name==cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[1]
+                    or dsfv.datasetField.datasetFieldType.name==cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[2])}"/>
     <p:inputText value="#{dsfv.valueForEdit}" id="inputText" pt:aria-required="#{dsf.required}"
                  styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"
-                 rendered="#{!dsfv.datasetField.datasetFieldType.controlledVocabulary
+                 rendered="#{!dsfv.datasetField.datasetFieldType.controlledVocabulary and !displayCV
                              and (dsfv.datasetField.datasetFieldType.fieldType == 'TEXT'
                              or dsfv.datasetField.datasetFieldType.fieldType == 'INT'
                              or dsfv.datasetField.datasetFieldType.fieldType == 'FLOAT'
@@ -21,12 +23,93 @@
                              or dsfv.datasetField.datasetFieldType.fieldType == 'DATE'
                              or dsfv.datasetField.datasetFieldType.fieldType == 'EMAIL')}"/>
     <p:watermark for="inputText" value="#{dsfv.datasetField.datasetFieldType.localeWatermark}"></p:watermark>
+    <ui:fragment rendered="#{displayCV and dsfv.datasetField.datasetFieldType.name==cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}">
+        <div id="akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}">
+            <p:autoComplete id="acSimple_#{valCount.index+1}_k" value="#{dsfv.valueForEdit}"
+                            completeMethod="#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs()}"
+                            style="width:95%;"/>
+        </div>
+    </ui:fragment>
+    <ui:fragment rendered="#{displayCV and dsfv.datasetField.datasetFieldType.name==cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[1]}">
+        <div id="akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[1]}">
+            <p:inputText value="#{dsfv.valueForEdit}" id="inputText_#{valCount.index+1}_v" tabindex="#{block.index+1}"
+                         styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"/>
+        </div>
+    </ui:fragment>
+    <ui:fragment rendered="#{displayCV and dsfv.datasetField.datasetFieldType.name==cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[2] }">
+        <div id="akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[2]}">
+            <p:inputText value="#{dsfv.valueForEdit}" id="inputText_#{valCount.index+1}_u" tabindex="#{block.index+1}"
+                         styleClass="form-control #{dsfv.datasetField.datasetFieldType.name == 'title' and DatasetPage.editMode == 'CREATE'  ? 'datasetfield-title' : ''}"/>
+        </div>
+        <script>
+                $(document).ready(function() {
+                    var jsonResult = {};
+                    var cvmSourceName = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getSourceName()}";
+                    var cvmSourceUrl = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getSourceUrl()}";
+                    var cvmReqUrl = cvmSourceUrl + "?q=" + cvmSourceName;
+                    var selectedVocab = "";
+                    var vocabFieldValue = $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").val();
+                    if (vocabFieldValue =='' ) {
+                        var autocompleVocabSize = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs().size()}";
+                        if(autocompleVocabSize == 1) {
+                            selectedVocab = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs()[0]}";
+                            $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").val(selectedVocab);
+                        }
+                    }
+                    $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").on("focusout", function(){
+                          selectedVocab = $(this).val();
+                        });
 
+                   $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[1]}").find("input[name*='inputText']").autocomplete({
+                        source: function(request, response) {
+                            $.ajax({
+                                url: cvmReqUrl + '&amp;voc=' + selectedVocab,
+                                dataType: "json",
+                                data: { code: request.term},
+                                success: function(data) {
+                                    var locodes = data.listOfCodes;
+                                    var terms = [];
+                                    var array = [];
+                                    $.each(locodes, function(i, item) {
+                                        terms.push(item.prefLabel.value);
+                                        array.push({
+                                            term: item.prefLabel.value,
+                                            url: item.url.value
+                                        });
+                                     });
+                                    jsonResult = $.parseJSON(JSON.stringify(array));
+                                    response(terms.sort());
+                                }
+                            });
+                        },
+                        minLength: 2,
+                        select: function(event, ui) {
+                            $.each(jsonResult, function(i, v) {
+                                 if (v.term.search(new RegExp(ui.item.value)) != -1) {
+                                     $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[2]}").find("input[name*='inputText']").val(v.url);
+                                    return;
+                                }
+                            });
+                         }
+                    });
+                 });
+            </script>
+        <style>
+                .ui-autocomplete {
+                    position: absolute;
+                    cursor: default;
+                    z-index: 1001 !important
+                }
+                 .ui-front {
+                    z-index: 1500 !important;
+                }
+            </style>
+    </ui:fragment>
     <p:inputTextarea value="#{dsfv.valueForEdit}" id="description" pt:aria-required="#{dsf.required}"
                      rows="5" cols="60" styleClass="form-control"
                      rendered="#{dsfv.datasetField.datasetFieldType.fieldType == 'TEXTBOX'}"/>
     <p:watermark for="description" value="#{dsfv.datasetField.datasetFieldType.localeWatermark}"></p:watermark>
-    
+
     <div class="ui-message ui-message-error ui-widget ui-corner-all" aria-live="polite" jsf:rendered="#{dsfvIndex eq 0 and !empty dsfv.datasetField.validationMessage}">
         <span class="ui-message-error-detail">#{dsfv.datasetField.validationMessage}</span>
     </div>
@@ -49,4 +132,5 @@
             //]]>
         </script>
     </ui:fragment>
+
 </ui:composition>
