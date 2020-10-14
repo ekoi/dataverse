@@ -44,9 +44,9 @@
         <script>
                 $(document).ready(function() {
                     var jsonResult = {};
-                    var cvmSourceName = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getSourceName()}";
-                    var cvmSourceUrl = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getSourceUrl()}";
-                    var cvmReqUrl = cvmSourceUrl + "?q=" + cvmSourceName;
+                    var cvmUrl = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getCvmUrl()}";
+                    var cvmLang = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getLanguage()}";
+                    var cvmReqUrl = cvmUrl + "?lang=" + cvmLang;
                     var selectedVocab = "";
                     var vocabFieldValue = $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").val();
                     if (vocabFieldValue =='' ) {
@@ -63,9 +63,9 @@
                    $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[1]}").find("input[name*='inputText']").autocomplete({
                         source: function(request, response) {
                             $.ajax({
-                                url: cvmReqUrl + '&amp;voc=' + selectedVocab,
+                                url: cvmReqUrl + '&amp;vocab=' + selectedVocab,
                                 dataType: "json",
-                                data: { code: request.term},
+                                data: { term: request.term},
                                 success: function(data) {
                                     var locodes = data.listOfCodes;
                                     var terms = [];

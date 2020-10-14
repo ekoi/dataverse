@@ -5630,34 +5630,35 @@ public class DatasetPage implements java.io.Serializable {
                 for (JsonString elm: v.getValuesAs(JsonString.class)){
                     vs.add(elm.getString());
                 }
-                JsonArray k = jo.getJsonArray("keys");
+                JsonArray k = jo.getJsonArray("vocab-codes");
                 List<String> ks = new ArrayList<>();
                 for (JsonString elm: k.getValuesAs(JsonString.class)){
                     ks.add(elm.getString());
                 }
-                CVM CVm = new CVM(jo.getString("source-name"), jo.getString("source-url"), vs, ks);
-                cvmMap.put(jo.getString("aci"), CVm);
+                CVM CVm = new CVM(jo.getString("cvm-url"), jo.getString("language"), vs, ks);
+                cvmMap.put(jo.getString("vocab-name"), CVm);
 
             }
         }
         return cvmMap;
     }
     public class CVM {
-        String sourceName;
-        String sourceUrl;
+        String cvmUrl;
+        String language;
         List<String> vocabs;
         List<String> keys;
-        public CVM(String sourceName, String sourceUrl, List<String> vocabs, List<String> keys){
-            this.sourceName = sourceName;
-            this.sourceUrl = sourceUrl;
+        public CVM(String cvmUrl, String language, List<String> vocabs, List<String> keys){
+            this.cvmUrl = cvmUrl;
+            this.language = language;
             this.vocabs = vocabs;
             this.keys = keys;
         }
-        public String getSourceName() {
-            return sourceName;
+
+        public String getCvmUrl() {
+            return cvmUrl;
         }
-        public String getSourceUrl() {
-            return sourceUrl;
+        public String getLanguage() {
+            return language;
         }
         public List<String> getVocabs() {
             return vocabs;
