@@ -5635,7 +5635,13 @@ public class DatasetPage implements java.io.Serializable {
                 for (JsonString elm: k.getValuesAs(JsonString.class)){
                     ks.add(elm.getString());
                 }
-                CVM CVm = new CVM(jo.getString("cvm-url"), jo.getString("language"), vs, ks);
+                String cvmLang = jo.getString("language");
+                if (cvmLang == null)
+                    cvmLang = "";
+                if (cvmLang.equals("system")) {
+                    cvmLang = BundleUtil.getDefaultLocale().getLanguage();
+                }
+                CVM CVm = new CVM(jo.getString("cvm-url"), cvmLang, vs, ks);
                 cvmMap.put(jo.getString("vocab-name"), CVm);
 
             }
