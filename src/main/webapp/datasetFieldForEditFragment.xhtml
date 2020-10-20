@@ -27,7 +27,10 @@
         <div id="akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}">
             <p:autoComplete id="acSimple_#{valCount.index+1}_k" value="#{dsfv.valueForEdit}"
                             completeMethod="#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs()}"
-                            style="width:95%;"/>
+                            style="width:95%;"
+                            readonly="#{facesContext.renderResponse and cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs().size() == 1
+                            and cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).isReadonly()}"/>
+
         </div>
     </ui:fragment>
     <ui:fragment rendered="#{displayCV and dsfv.datasetField.datasetFieldType.name==cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[1]}">

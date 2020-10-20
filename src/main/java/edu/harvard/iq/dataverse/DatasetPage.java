@@ -5635,13 +5635,14 @@ public class DatasetPage implements java.io.Serializable {
                 for (JsonString elm: k.getValuesAs(JsonString.class)){
                     ks.add(elm.getString());
                 }
-                String cvmLang = jo.getString("language");
-                if (cvmLang == null)
-                    cvmLang = "";
-                if (cvmLang.equals("system")) {
-                    cvmLang = BundleUtil.getDefaultLocale().getLanguage();
-                }
-                CVM CVm = new CVM(jo.getString("cvm-url"), cvmLang, vs, ks);
+                String cvmLang = BundleUtil.getDefaultLocale().getLanguage();
+                if (jo.containsKey("language"))
+                    cvmLang = jo.getString("language"); // in case of "language":"", "&lang=" will be send to the middleware
+                boolean cvmReadonly = false;
+                if (jo.containsKey("readonly") && jo.getString("readonly").toLowerCase().equals("true"))
+                    cvmReadonly = true;
+
+                CVM CVm = new CVM(jo.getString("cvm-url"), cvmLang, cvmReadonly, vs, ks);
                 cvmMap.put(jo.getString("vocab-name"), CVm);
 
             }
@@ -5651,11 +5652,13 @@ public class DatasetPage implements java.io.Serializable {
     public class CVM {
         String cvmUrl;
         String language;
+        boolean readonly;
         List<String> vocabs;
         List<String> keys;
-        public CVM(String cvmUrl, String language, List<String> vocabs, List<String> keys){
+        public CVM(String cvmUrl, String language, boolean readonly, List<String> vocabs, List<String> keys){
             this.cvmUrl = cvmUrl;
             this.language = language;
+            this.readonly = readonly;
             this.vocabs = vocabs;
             this.keys = keys;
         }
@@ -5665,6 +5668,10 @@ public class DatasetPage implements java.io.Serializable {
         }
         public String getLanguage() {
             return language;
+        }
+
+        public boolean isReadonly() {
+            return readonly;
         }
         public List<String> getVocabs() {
             return vocabs;
