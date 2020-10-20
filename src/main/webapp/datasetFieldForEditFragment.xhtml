@@ -50,6 +50,10 @@
                     var cvmUrl = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getCvmUrl()}";
                     var cvmLang = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getLanguage()}";
                     var cvmReqUrl = cvmUrl + "?lang=" + cvmLang;
+                    var readonlyfield = "#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getVocabs().size() == 1
+                                            and cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).isReadonly()}";
+                    if (readonlyfield)
+                        $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").css('background-color' , '#DEDEDE');
                     var selectedVocab = "";
                     var vocabFieldValue = $("#akmi_#{valCount.index+1}_#{cvMgr.get(dsfv.datasetField.datasetFieldType.parentDatasetFieldType.name).getKeys()[0]}").find("input[name*='acSimple_'").val();
                     if (vocabFieldValue =='' ) {
