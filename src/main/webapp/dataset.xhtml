@@ -9,8 +9,7 @@
       xmlns:jsf="http://xmlns.jcp.org/jsf"
       xmlns:pt="http://java.sun.com/jsf/passthrough"
       xmlns:cc="http://java.sun.com/jsf/composite"
-      xmlns:o="http://omnifaces.org/ui"
-      xmlns:iqbs="http://xmlns.jcp.org/jsf/composite/iqbs">
+      xmlns:o="http://omnifaces.org/ui">
     <h:head>
     </h:head>
     <h:body>
@@ -21,8 +20,6 @@
             <ui:param name="version" value="#{DatasetPage.workingVersion}"/>
             <ui:param name="locked" value="#{DatasetPage.locked}"/>
 	    <ui:param name="showMessagePanel" value="#{true}"/>
-            <!-- DANS DataverseBridge -->
-            <ui:param name="showDataverseBridge" value="#{DatasetPage.sessionUserAuthenticated and DatasetPage.dataverseBridgeEnabled and DatasetPage.workingVersion.isReleased()}"/>
 	    <ui:define name="meta_header">
             <meta name="description" content="#{DatasetPage.description}"/>
             </ui:define>
@@ -60,8 +57,8 @@
             <ui:define name="body">
                 <o:importFunctions type="edu.harvard.iq.dataverse.util.MarkupChecker" />
                 <f:metadata>
-                    <f:viewParam name="id" value="#{DatasetPage.dataset.id}"/>
-                    <f:viewParam name="ownerId" value="#{DatasetPage.ownerId}"/>
+                    <f:viewParam name="id" value="#{DatasetPage.id}"/>
+                    <o:viewParam name="ownerId" value="#{DatasetPage.ownerId}"/>
                     <f:viewParam name="version" value="#{DatasetPage.version}"/>
                     <f:viewParam name="versionId" value="#{DatasetPage.versionId}"/>
                     <f:viewParam name="persistentId" value="#{DatasetPage.persistentId}"/>
@@ -77,11 +74,6 @@
                     <f:viewAction action="#{dataverseHeaderFragment.initBreadcrumbs(DatasetPage.dataset)}"/>
                     <f:viewAction action="#{EditDatafilesPage.initCreateMode(DatasetPage.editMode, DatasetPage.workingVersion, DatasetPage.newFiles, DatasetPage.selectedFiles)}"/>
                 </f:metadata>
-                <!-- DANS DataverseBridge BLOCK -->
-                <ui:fragment rendered="#{showDataverseBridge}">
-                    <ui:include src="dataverseBridgeFragment.xhtml"/>
-                </ui:fragment>
-                <!-- END: DataverseBridge BLOCK -->
                 <h:form id="datasetForm">
                     <!-- View infoMode -->
                     <!-- Top Button/Citation Blocks -->
@@ -92,29 +84,6 @@
                                 <div class="row">
                                     <!-- ActionButtonBlock -->
                                     <div class="col-xs-12 text-right padding-none">
-
-                                        <!-- DANS Archive button-->
-                                        <div class="btn-group pull-right" id="datasetButtonBar" role="group">
-                                            <p:commandLink type="button" styleClass="btn btn-default #{DatasetPage.locked ? 'disabled' : ''}" oncomplete="PF('darForm').show()"
-                                                           rendered="#{showDataverseBridge and DatasetPage.workingVersion.darNote == null and DatasetPage.workingVersion.isLatestVersion()
-                                               					and DatasetPage.dataset.owner.released and permissionsWrapper.canIssuePublishDatasetCommand(DatasetPage.dataset)}">
-                                                <f:setPropertyActionListener target="#{dataverseBridgeDialog.datasetVersionFriendlyNumber}" value="#{DatasetPage.workingVersion.versionNumber}.#{DatasetPage.workingVersion.minorVersionNumber}"/>
-                                                <f:setPropertyActionListener target="#{dataverseBridgeDialog.persistentId}" value="#{DatasetPage.persistentId}"/>
-                                                <f:setPropertyActionListener target="#{dataverseBridgeDialog.darName}" value="#{DatasetPage.darName}"/>
-                                                <f:setPropertyActionListener target="#{dataverseBridgeDialog.darNameList}" value="#{DatasetPage.darNameList}"/>
-                                                <f:setPropertyActionListener target="#{dataverseBridgeDialog.darUsername}" value="#{DatasetPage.darUsername}"/>
-                                                <f:setPropertyActionListener target="#{dataverseBridgeDialog.darPassword}" value="#{DatasetPage.darPassword}"/>
-                                                <f:setPropertyActionListener target="#{dataverseBridgeDialog.darUserAffiliation}" value="#{DatasetPage.darUserAffiliation}"/>
-                                                <f:setPropertyActionListener target="#{dataverseBridgeDialog.swordGroupAlias}" value="#{DatasetPage.swordGroupAlias}"/>
-                                                <span class="glyphicon glyphicon-save-file"/>#{bundle['dataset.archive.button']}
-                                            </p:commandLink>
-                                            <p:commandLink id="ajax" type="button" styleClass="btn btn-default bootstrap-button-tooltip #{DatasetPage.locked ? 'disabled' : ''}"
-                                                           title="Please reload the page to check on the archiving progress" update=":datasetForm" actionListener="#{DatasetPage.reload()}"
-                                                           rendered="#{showDataverseBridge and DatasetPage.workingVersion.darNote.startsWith('IN-PROGRESS@')}">
-                                                <span class="glyphicon glyphicon-transfer"/>#{bundle['dataset.archive.button.inprogress']}
-                                            </p:commandLink>
-                                        </div>
-
                                         <!-- Contact/Share Button Group -->
                                         <div class="btn-group" id="datasetButtonBar" role="group">
                                             <p:commandLink class="text-button btn-contact bootstrap-button-tooltip" title="#{bundle['dataset.email.datasetContactBtn']}"
@@ -297,29 +266,6 @@
                                             </ui:fragment>
                                             <!-- END: Edit Button -->
                                             <!-- END: Edit/Link/Publish Button Group -->
-
-                            <!-- DANS Archive button
-                            <div class="btn-group pull-right" id="datasetButtonBar" role="group">
-                                <p:commandLink type="button" styleClass="btn btn-default #{DatasetPage.locked ? 'disabled' : ''}" oncomplete="PF('darForm').show()"
-                                               rendered="#{showDataverseBridge and DatasetPage.workingVersion.darNote == null and DatasetPage.workingVersion.isLatestVersion()
-                                               					and DatasetPage.dataset.owner.released and permissionsWrapper.canIssuePublishDatasetCommand(DatasetPage.dataset)}">
-                                    <f:setPropertyActionListener target="#{dataverseBridgeDialog.datasetVersionFriendlyNumber}" value="#{DatasetPage.workingVersion.versionNumber}.#{DatasetPage.workingVersion.minorVersionNumber}"/>
-                                    <f:setPropertyActionListener target="#{dataverseBridgeDialog.persistentId}" value="#{DatasetPage.persistentId}"/>
-                                    <f:setPropertyActionListener target="#{dataverseBridgeDialog.darName}" value="#{DatasetPage.darName}"/>
-                                    <f:setPropertyActionListener target="#{dataverseBridgeDialog.darNameList}" value="#{DatasetPage.darNameList}"/>
-                                    <f:setPropertyActionListener target="#{dataverseBridgeDialog.darUsername}" value="#{DatasetPage.darUsername}"/>
-                                    <f:setPropertyActionListener target="#{dataverseBridgeDialog.darPassword}" value="#{DatasetPage.darPassword}"/>
-                                    <f:setPropertyActionListener target="#{dataverseBridgeDialog.darUserAffiliation}" value="#{DatasetPage.darUserAffiliation}"/>
-                                    <f:setPropertyActionListener target="#{dataverseBridgeDialog.swordGroupAlias}" value="#{DatasetPage.swordGroupAlias}"/>
-                                    <span class="glyphicon glyphicon-save-file"/>#{bundle['dataset.archive.button']}
-                                </p:commandLink>
-                                <p:commandLink id="ajax" type="button" styleClass="btn btn-default bootstrap-button-tooltip #{DatasetPage.locked ? 'disabled' : ''}"
-                                               title="Please reload the page to check on the archiving progress" update=":datasetForm" actionListener="#{DatasetPage.reload()}"
-                                               rendered="#{showDataverseBridge and DatasetPage.workingVersion.darNote.startsWith('IN-PROGRESS@')}">
-                                    <span class="glyphicon glyphicon-transfer"/>#{bundle['dataset.archive.button.inprogress']}
-                                </p:commandLink>
-                            </div>
--->
                                             <div class="btn-group" jsf:rendered="#{!DatasetPage.dataset.deaccessioned}">
                                                 <!-- Explore Button Group -->
                                                 <ui:fragment rendered="#{DatasetPage.datasetExploreTools.size()==1}">
@@ -436,8 +382,14 @@
                                             <div id="metrics-block">
                                             <div id="metrics-heading">
                                                 #{bundle['metrics.dataset.title']}
-                                                <span class="glyphicon glyphicon-question-sign tooltip-icon" data-toggle="tooltip" data-placement="auto top" 
-                                                        data-original-title="#{settingsWrapper.makeDataCountDisplayEnabled ? bundle['metrics.dataset.tip.makedatacount'] : bundle['metrics.dataset.tip.default']}"></span>
+                                                <ui:fragment rendered="#{!settingsWrapper.makeDataCountDisplayEnabled}">
+                                                    <span class="glyphicon glyphicon-question-sign tooltip-icon" data-toggle="tooltip" data-placement="auto top" 
+                                                        data-trigger="hover" data-original-title="#{bundle['metrics.dataset.tip.default']}"></span>
+                                                </ui:fragment>
+                                                <ui:fragment rendered="#{settingsWrapper.makeDataCountDisplayEnabled}">
+                                                    <a tabindex="0" role="button" class="glyphicon glyphicon-question-sign tooltip-icon" data-toggle="popover" data-placement="auto top" 
+                                                        data-trigger="focus" data-html="true" data-content="#{bundle['metrics.dataset.tip.makedatacount']}"></a>
+                                                </ui:fragment>
                                             </div>
                                             <div id="metrics-body">
                                                 <!-- Classic downloads -->
@@ -612,7 +564,8 @@
                                                              style="display:none"
                                                              process="@this :datasetForm:hostDataverseContent"
                                                              update="@form,:breadCrumbPanel"
-                                                             action="#{DatasetPage.updateOwnerDataverse()}">
+                                                             action="#{DatasetPage.updateOwnerDataverse()}"
+                                                             oncomplete="bind_bsui_components();">
                                             </p:commandButton>
                                         </p:fragment>
                                     </div>
@@ -677,6 +630,7 @@
                             <p:commandButton id="refreshButton" process="@this" widgetVar="refreshButton" update=":datasetForm:topDatasetBlockFragment,:datasetForm:tabView:filesTable" style="display:none"/>
                             <script>
                                 //<![CDATA[
+                                // javascript for refreshing page when locks
                                 $(this).ready(function () {
                                     refreshIfStillLocked();
                                 });
@@ -1409,7 +1363,6 @@
                                 <div class="col-xs-8">
                                     <p:fragment id="linkNameContent">
                                         <p:autoComplete id="dataverseLinkName"
-                                                        binding="#{DatasetPage.selectedDataverseMenu}"
                                                         placeholder="#{bundle['dataverse.link.yourDataverses.inputPlaceholder']}"
                                                         emptyMessage="#{bundle['dataverse.link.dataset.none']}"
                                                         scrollHeight="180" forceSelection="true" 
@@ -1441,7 +1394,7 @@
                                            value="#{bundle['dataset.link.save']}">  
                                 <f:param name="DO_DS_LINK_VALIDATION" value="true"/>
                             </p:commandButton>
-                            <button class="btn btn-link" onclick="PF('linkDatasetForm').hide();PF('blockDatasetForm').hide();" type="button">
+                            <button class="btn btn-link" onclick="PF('linkDatasetForm').hide();PF('blockDatasetForm').hide();" type="button">                              
                                 #{bundle.cancel}
                             </button>
                         </div>
@@ -1671,7 +1624,7 @@
                 <script>
                     //<![CDATA[
                     $(document).ready(function () {
-                        popoverHTML('#{bundle.htmlAllowedTitle}');
+                        popoverHTML('#{bundle.htmlAllowedTitle}','#{bundle.htmlAllowedTags}');
                     });
                     function openDialog() {
                         PF('details').show();

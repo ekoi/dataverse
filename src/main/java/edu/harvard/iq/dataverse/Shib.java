@@ -11,9 +11,12 @@ import edu.harvard.iq.dataverse.authorization.providers.shib.ShibServiceBean;
 import edu.harvard.iq.dataverse.authorization.providers.shib.ShibUserNameFields;
 import edu.harvard.iq.dataverse.authorization.providers.shib.ShibUtil;
 import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
+import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
 import edu.harvard.iq.dataverse.util.BundleUtil;
 import edu.harvard.iq.dataverse.util.JsfHelper;
 import edu.harvard.iq.dataverse.util.SystemConfig;
+import org.apache.commons.lang.StringUtils;
+
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -51,8 +54,12 @@ public class Shib implements java.io.Serializable {
     @EJB
     UserNotificationServiceBean userNotificationService;
     @EJB
+    SettingsServiceBean settingsService;
+    /* DANS fix affiliation - Start */
+    @EJB
     DatasetFieldServiceBean datasetFieldService;
-
+    /* DANS fix affiliation - END */
+    
     HttpServletRequest request;
 
     private String userPersistentId;
@@ -149,21 +156,26 @@ public class Shib implements java.io.Serializable {
         } catch (Exception ex) {
             return;
         }
-
+        /* DANS fix for missing firstname - remove
+        String firstName;
+        try {
+            firstName = getRequiredValueFromAssertion(ShibUtil.firstNameAttribute);
+        } catch (Exception ex) {
+            return;
+        } */
         String lastName;
         try {
             lastName = getRequiredValueFromAssertion(ShibUtil.lastNameAttribute);
         } catch (Exception ex) {
             return;
         }
-
+        /* DANS fix for missing firstname - Start */
         String firstName = getValueFromAssertion(ShibUtil.firstNameAttribute);
         if (firstName == null) {
             firstName = lastName.substring(0, 1);
             logger.info("Firstname is null, so take the first character of the lastname: " + firstName);
         }
-
-
+        /* DANS fix for missing firstname - End */
         ShibUserNameFields shibUserNameFields = ShibUtil.findBestFirstAndLastName(firstName, lastName, null);
         if (shibUserNameFields != null) {
             String betterFirstName = shibUserNameFields.getFirstName();
@@ -209,19 +221,29 @@ public class Shib implements java.io.Serializable {
         String usernameAssertion = getValueFromAssertion(ShibUtil.usernameAttribute);
         internalUserIdentifer = ShibUtil.generateFriendlyLookingUserIdentifer(usernameAssertion, emailAddress);
         logger.fine("friendly looking identifer (backend will enforce uniqueness):" + internalUserIdentifer);
-
-        //String affiliation = shibService.getAffiliation(shibIdp, shibService.getDevShibAccountType());
+        /* DANS fix affiliation - Start */
         String affiliation = getValueFromAssertion("schacHomeOrganization");
         if (affiliation == null || affiliation.isEmpty())
-        	affiliation = shibService.getAffiliation(shibIdp, shibService.getDevShibAccountType());
+            affiliation = shibService.getAffiliation(shibIdp, shibService.getDevShibAccountType());
         if (affiliation != null) {
-        	DatasetFieldType dsft =datasetFieldService.findByName("producer");
+            DatasetFieldType dsft =datasetFieldService.findByName("producer");
             ControlledVocabularyValue cvv = datasetFieldService.findControlledVocabularyValueByDatasetFieldTypeAndIdentifier(dsft, "@" + affiliation);
             if (cvv != null)
-            	affiliation = cvv.getStrValue();
+                affiliation = cvv.getStrValue();
             affiliationToDisplayAtConfirmation = affiliation;
             friendlyNameForInstitution = affiliation;
         }
+        /* DANS fix affiliation - End */
+        /* DANS fix affiliation - remove
+        String shibAffiliationAttribute = settingsService.getValueForKey(SettingsServiceBean.Key.ShibAffiliationAttribute);
+        String affiliation = (StringUtils.isNotBlank(shibAffiliationAttribute))
+            ? getValueFromAssertion(shibAffiliationAttribute)
+            : shibService.getAffiliation(shibIdp, shibService.getDevShibAccountType());
+
+        if (affiliation != null) {
+            affiliationToDisplayAtConfirmation = affiliation;
+            friendlyNameForInstitution = affiliation;
+        } */
 //        emailAddress = "willFailBeanValidation"; // for testing createAuthenticatedUser exceptions
         displayInfo = new AuthenticatedUserDisplayInfo(firstName, lastName, emailAddress, affiliation, null);
 

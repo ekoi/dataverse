@@ -21,8 +21,6 @@
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
                     </button>
-                    <!-- DANS - only show logo in nav bar when NOT in root verse (DataverseNL) or when creating -->
-                    <div jsf:rendered="#{dataverse.name!='DataverseNL' or DataverseUserPage.editMode=='CREATE'}">
                     <a href="/">
                         <ui:fragment rendered="#{empty settingsWrapper.get(':LogoCustomizationFile')}">
                             <span class="navbar-brand" tabindex="1"><span id="icon-dataverse" class="icon-dataverse"></span> #{bundle.dataverse}</span>
@@ -30,7 +28,6 @@
                         <h:graphicImage rendered="#{!empty settingsWrapper.get(':LogoCustomizationFile')}"
                             url="#{settingsWrapper.get(':LogoCustomizationFile')}" styleClass="navbar-brand custom-logo" alt="#{of:format1(bundle['alt.homepage'], dataverseServiceBean.findRootDataverse().name)}"/>
                     </a>
-                    </div>
                 </div>
                 <div class="collapse navbar-collapse" id="topNavBar">
                     <ul class="nav navbar-nav navbar-right">
@@ -76,18 +73,14 @@
                                 <h:outputText value="#{bundle['header.guides.user']}"/>
                             </h:outputLink>
                         </li>
-                    <!-- DANS don't show bar if url is empty -->
-                    <ui:fragment rendered="#{!empty settingsWrapper.get(':NavbarSupportUrl')}">
-
                         <li jsf:rendered="#{!empty settingsWrapper.get(':NavbarSupportUrl')}">
                             <h:outputLink value="#{settingsWrapper.get(':NavbarSupportUrl')}" target="_blank" rel="noopener">
                                 <h:outputText value="#{bundle['header.support']}"/>
                             </h:outputLink>
                         </li>
-                    </ui:fragment>
                         <ui:fragment rendered="#{empty settingsWrapper.get(':NavbarSupportUrl')}">
                             <o:form useRequestURI="true" class="navbar-form navbar-left navbar-form-link">
-                                <p:commandLink oncomplete="PF('contactForm').show()" update=":contactDialog" actionListener="#{sendFeedbackDialog.initUserInput}">
+                                <p:commandLink oncomplete="PF('contactForm').show()" update=":contactDialog" actionListener="#{sendFeedbackDialog.initUserInput}" id="headerSupportLink">
                                     <f:setPropertyActionListener target="#{sendFeedbackDialog.messageSubject}" value=""/>
                                     <f:setPropertyActionListener target="#{sendFeedbackDialog.recipient}" value="#{null}"/>
                                     <f:setPropertyActionListener target="#{sendFeedbackDialog.userMessage}" value=""/>
@@ -108,16 +101,19 @@
                                 </h:form>
                             </ul>
                         </li>
-
                         <ui:fragment rendered="#{!dataverseSession.user.authenticated}">
-                            <!-- DANS - removed signup -->
+                            <li>
+                                <h:outputLink rendered="#{dataverseHeaderFragment.signupAllowed}"
+                                              value="#{dataverseHeaderFragment.getSignupUrl(navigationWrapper.redirectPage)}">
+                                    #{bundle['header.signUp']}
+                                </h:outputLink>
+                            </li>
                             <li>
                                 <h:outputLink value="/loginpage.xhtml?#{loginRedirectPage}">
                                     #{bundle.login}
                                 </h:outputLink>
                             </li>
                         </ui:fragment>
-                        
                         <ui:fragment rendered="#{dataverseSession.user.authenticated}">
                             <li class="dropdown accountName">
                                 <a href="#" id="lnk_header_account_dropdown" class="dropdown-toggle" data-toggle="dropdown" role="menu" aria-haspopup="true" aria-expanded="false">
@@ -218,21 +214,13 @@
                 <div class="dataverseHeaderCell dataverseHeaderLogo" jsf:rendered="#{!empty dataverse.dataverseTheme.logo and dataverse.dataverseTheme.logoFormat == 'SQUARE'}">
                     <img src="/logos/#{dataverse.logoOwnerId}/#{dataverse.dataverseTheme.logo}" alt="#{of:format1(bundle['alt.logo'], dataverse.name)}"/>
                 </div>
-
-                <!-- DANS addition - when at root verse (DataverseNL) show logo, otherwise show text. Note that logo is not in navbar when at root verse -->
-                <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{!empty dataverse.name} and dataverse.name!='DataverseNL'">
+                <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{editModeDataverse == 'CREATE'}">
+                    <h:outputText styleClass="dataverseHeaderDataverseName" value="#{bundle.newDataverse}"/>
+                </div>
+                <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{editModeDataverse != 'CREATE'}">
                     <a href="/dataverse/#{dataverse.alias}" class="dataverseHeaderDataverseName" style="color:##{!empty dataverse.dataverseTheme.linkColor ? dataverse.dataverseTheme.linkColor : '428bca'};">#{dataverse.name}</a>
                     <h:outputText style="color:##{!empty dataverse.dataverseTheme.textColor ? dataverse.dataverseTheme.textColor : '888888'};" value=" (#{dataverse.affiliation})" rendered="#{!empty dataverse.affiliation}"/>
                     <h:outputText value="#{bundle.unpublished}" styleClass="label label-warning label-unpublished" rendered="#{!dataverse.released}"/>
-                </div>
-                <div class="dataverseHeaderCell dataverseHeaderName" style="padding-top:10px;padding-bottom:10px;!important" jsf:rendered="#{!empty dataverse.name and dataverse.name=='DataverseNL'}">
-                <a href="/">
-                    <img height="40%" width="40%" src="/resources/images/DataversNL-logo.png"/>
-                    </a>
-                </div>
-
-                <div class="dataverseHeaderCell dataverseHeaderName" jsf:rendered="#{empty dataverse.name}">
-                    <h:outputText styleClass="dataverseHeaderDataverseName" value="#{bundle.newDataverse}"/>
                 </div>
                 <div class="dataverseHeaderCell dataverseHeaderTagline" jsf:rendered="#{!empty dataverse.dataverseTheme.tagline and empty dataverse.dataverseTheme.linkUrl}">
                     <h:outputText escape="false" style="color:##{!empty dataverse.dataverseTheme.textColor ? dataverse.dataverseTheme.textColor : '888888'};" value="#{StringEscapeUtils:escapeHtml(dataverse.dataverseTheme.tagline)}" />
@@ -318,13 +306,6 @@
                     <!--change this to <h:messages id="messages"/> to see otherwise hidden errors such as `Conversion Error setting value 'foo.jpg' for 'null Converter'`-->
                 </ui:remove>
                 <iqbs:messages id="messages" collapsible="true" />
-            </div>
-            <!-- DANS addition -->
-            <div class="container messagePanel" jsf:rendered="#{DataverseUserPage.editMode == 'CREATE' and DataverseUserPage.nonLocalLoginEnabled}">
-                <div class="alert alert-dismissable alert-info" style="font-size:20px;">
-                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                    <span class="glyphicon glyphicon-info-sign"></span><strong> Please use your </strong><a style="font-size:18px;" class="btn btn-default" href="/Shibboleth.sso/Login?SAMLDS=1&amp;target=#{systemConfig.dataverseSiteUrl}/ms/ShibAttributesHandler"><strong>institutional account</strong></a><strong>. Only if your institute isn't connected via SURFconext, create an account.</strong>
-                </div>
             </div>
         </p:fragment>
     </div>

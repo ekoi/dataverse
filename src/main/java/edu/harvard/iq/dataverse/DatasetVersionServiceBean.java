@@ -1104,20 +1104,7 @@ w
         }
         return info;
     }
-    //DANS for DataverseBridge
-    public DatasetVersion update(DatasetVersion datasetVersion){
-        DatasetVersion saved = em.merge(datasetVersion);
-        boolean doNormalSolrDocCleanUp = true;
-        try {
-            Future<String> indexingResult = indexService.indexDataset(datasetVersion.getDataset(), doNormalSolrDocCleanUp);
-        } catch (IOException | SolrServerException e) {
-            String failureLogText = "Post Bridge archiving update indexing failed. You can kickoff a re-index of this dataset with: \r\n curl http://localhost:8080/api/admin/index/datasets/" + datasetVersion.getDataset().getId().toString();
-            failureLogText += "\r\n" + e.getLocalizedMessage();
-            LoggingUtil.writeOnSuccessFailureLog(null, failureLogText,  datasetVersion.getDataset());
-        }
-        return saved;
-    }
-
+    
     private boolean isFileUnfsIdentical(List<String> fileUnfs1, List<String> fileUnfs2) {
         if (fileUnfs1.size() != fileUnfs2.size()) {
             return false;

@@ -4,7 +4,6 @@
      xmlns:f="http://java.sun.com/jsf/core"
      xmlns:ui="http://java.sun.com/jsf/facelets"
      xmlns:c="http://java.sun.com/jsp/jstl/core"
-     xmlns:fn="http://java.sun.com/jsp/jstl/functions"
      xmlns:p="http://primefaces.org/ui"
      xmlns:o="http://omnifaces.org/ui"
      xmlns:jsf="http://xmlns.jcp.org/jsf">
@@ -144,17 +143,6 @@
                 <h:outputText id="versionDate" value="#{versionTab.versionDate}" />
             </ui:fragment>
         </p:column><!-- end: date column -->
-
-        <!-- DANS DataverseBridge - archive column -->
-        <c:set var="darNoteArray" value="#{fn:split(versionTab.darNote,'#')}"/>
-        <c:set var="darText" value="&lt;a target=&quot;_blank&quot; href=&quot;#{darNoteArray[0]}&quot;&gt;#{darNoteArray[1]}&lt;/a&gt;&lt;br/&gt;#{darNoteArray[2]}"/>
-        <c:set var="darNoteDisplayText" value="#{(fn:length(darNoteArray) == 3) ? darText:versionTab.darNote }"/>
-        <p:column headerText="Archived" class="col-sm-2" rendered="#{DatasetPage.displayArchivedColumn}">
-            <ui:fragment>
-                <h:outputText id="archived" value="${darNoteDisplayText}" escape="false"/>
-            </ui:fragment>
-        </p:column>
-        <!-- end: DANS archive column -->
     </p:dataTable>
 <!-- / VERSIONS -->
 </ui:fragment>
