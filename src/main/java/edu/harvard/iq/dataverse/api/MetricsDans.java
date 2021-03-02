@@ -241,7 +241,8 @@ public class MetricsDans extends AbstractApiBean {
                     long totalStorage = 0;
                     for (Object ds[] : dsLists) {
                         numbOffiles += (long) ds[1];
-                        totalStorage += +((BigDecimal) ds[2]).longValue();
+                        if (ds[2] != null)
+                            totalStorage += ((BigDecimal) ds[2]).longValue();
                     }
                     String path = metricsSvc.getPath(id);
                     DvReport dvReport = new DvReport(id, (String) dv[1], (String) dv[2], path, (String) dv[3], status, (String) dv[5], dsLists.size(), numbOffiles, totalStorage);
@@ -277,10 +278,12 @@ public class MetricsDans extends AbstractApiBean {
                         String status = "Published";
                         if (ds[1] == null)
                             status = "Draft";
-                        int dsId = (int) ds[6];
+                        int dsId = (int) ds[4];
                         String path = metricsSvc.getPath(dsId);
-                        long storagesize = ((ds[4] == null) ? 0:((BigDecimal) ds[4]).longValue());
-                        DsReport dsReport = new DsReport((String) dv[1], (String) dv[2], path, (String) ds[0], (String) ds[7], status, (String) ds[2], (long) ds[3], storagesize, (long) ds[5]);
+                        List<Object[]> snList = metricsSvc.getSizeAndNumByOwnerId(dsId);
+                        long storagesize = ((snList == null || snList.isEmpty()) ? 0:((BigDecimal) snList.get(0)[2]).longValue());
+                        long num = ((snList == null || snList.isEmpty()) ? 0:((long) snList.get(0)[1]));
+                        DsReport dsReport = new DsReport((String) dv[1], (String) dv[2], path, (String) ds[0], (String) ds[5], status, (String) ds[2], num, storagesize, (long) ds[3]);
                         dsReports.add(dsReport);
                     }
                 });

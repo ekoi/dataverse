@@ -154,29 +154,35 @@ public class MetricsDansServiceBean extends MetricsServiceBean implements Serial
                 + "FULL OUTER JOIN dvobject dvo2 on dvo2.owner_id=dvo1.id\n"
                 + "FULL OUTER JOIN datafile df on df.id=dvo2.id\n"
                 + "where dvo1.dtype='Dataset'\n"
-                + "and dvo2.dtype='DataFile'\n"
                 + "and dvo1.owner_id = " + id + "\n"
                 + "group by pid order by num;";
-        logger.fine("query - getDatasetsByOwnerIds: " + sql);
+        logger.fine("query - getDatasetsByOwnerId: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
     public List<Object[]> getDatasetsAndDownloadsByOwnerId(long id) {
-        String sql = "select (dvo1.authority || '/' || dvo1.identifier) as pid, dvo1.publicationdate, to_char(dvo1.createdate, 'YYYY-MM-DD') as create_date, count(dvo2.owner_id) as num, sum(df.filesize) as size, count(gb.id) as downloads, dvo1.id, dfv.value as title\n"
+        String sql = "select (dvo1.authority || '/' || dvo1.identifier) as pid, dvo1.publicationdate, to_char(dvo1.createdate, 'YYYY-MM-DD') as create_date, count(gb.id) as downloads, dvo1.id, dfv.value as title\n"
                 + "from dvobject dvo1\n"
                 + "FULL OUTER JOIN dvobject dvo2 on dvo2.owner_id=dvo1.id\n"
-                + "FULL OUTER JOIN datafile df on df.id=dvo2.id\n"
-                + "FULL OUTER JOIN guestbookresponse gb on gb.dataset_id = dvo1.id and df.id = gb.datafile_id\n"
+                + "FULL OUTER JOIN guestbookresponse gb on gb.dataset_id = dvo1.id and dvo2.id = gb.datafile_id\n"
                 + "JOIN datasetversion dsv on dsv.dataset_id=dvo1.id\n"
                 + "JOIN datasetfield dsf on dsf.datasetversion_id = dsv.id and dsf.datasetversion_id in (select id from datasetversion where dataset_id=dvo1.id order by version DESC FETCH FIRST ROW ONLY)\n"
                 + "JOIN datasetfieldvalue dfv on dfv.datasetfield_id = dsf.id\n"
-                + "JOIN datasetfieldtype dft  on dft.id = dsf.datasetfieldtype_id and dft.name='title'"
+                + "JOIN datasetfieldtype dft  on dft.id = dsf.datasetfieldtype_id and dft.name='title'\n"
                 + "where dvo1.dtype='Dataset'\n"
                 + "and dvo1.owner_id !=1\n"
-                + "and ( dvo2 is null or dvo2.dtype='DataFile')\n"
                 + "and dvo1.owner_id = " + id + "\n"
-                + "group by dvo1.id, pid, dvo1.publicationdate, create_date, dfv.value order by num;";
+                + "group by dvo1.id, pid, dvo1.publicationdate, create_date, dfv.value order by pid;";
         logger.fine("query - getDatasetsAndDownloadsByOwnerId: " + sql);
+        return em.createNativeQuery(sql).getResultList();
+    }
+
+    public List<Object[]> getSizeAndNumByOwnerId(long id) {
+        String sql = "select dvo1.id, count(dvo2.owner_id) as num, sum(df.filesize) as size from dvobject dvo1, dvobject dvo2 \n" +
+                "JOIN datafile df on df.id=dvo2.id\n" +
+                "where dvo1.id=" + id + " and dvo2.owner_id=dvo1.id\n" +
+                "group by dvo1.id;";
+        logger.fine("query - getSizeAndNumByOwnerId: " + sql);
         return em.createNativeQuery(sql).getResultList();
     }
 
