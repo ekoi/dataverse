@@ -1,18 +1,25 @@
 package edu.harvard.iq.dataverse;
 
-import edu.harvard.iq.dataverse.util.MarkupChecker;
 import edu.harvard.iq.dataverse.DatasetFieldType.FieldType;
 import edu.harvard.iq.dataverse.branding.BrandingUtil;
-import edu.harvard.iq.dataverse.util.FileUtil;
-import edu.harvard.iq.dataverse.util.StringUtil;
-import edu.harvard.iq.dataverse.util.SystemConfig;
-import edu.harvard.iq.dataverse.util.DateUtil;
+import edu.harvard.iq.dataverse.util.*;
 import edu.harvard.iq.dataverse.util.json.NullSafeJsonBuilder;
 import edu.harvard.iq.dataverse.workflows.WorkflowComment;
+import org.apache.commons.lang.StringUtils;
+
+import javax.json.Json;
+import javax.json.JsonArray;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObjectBuilder;
+import javax.persistence.*;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+import javax.validation.constraints.Size;
 import java.io.Serializable;
 import java.net.URL;
 import java.sql.Timestamp;
-import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -170,6 +177,17 @@ public class DatasetVersion implements Serializable {
     // Is this the right mapping and cascading for when the workflowcomments table is being used for objects other than DatasetVersion?
     @OneToMany(mappedBy = "datasetVersion", cascade={CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
     private List<WorkflowComment> workflowComments;
+
+    public List<ConceptsCache> getConceptsCaches() {
+        return conceptsCaches;
+    }
+
+    public void setConceptsCaches(List<ConceptsCache> conceptsCaches) {
+        this.conceptsCaches = conceptsCaches;
+    }
+
+    @OneToMany(mappedBy = "datasetVersion", cascade = {CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
+    private List<ConceptsCache> conceptsCaches;
 
     
     public Long getId() {
