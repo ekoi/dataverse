@@ -451,13 +451,16 @@ public class JsonPrinter {
     public static JsonArrayBuilder jsonByBlocksConceptCache(List<ConceptsCache> conceptsCaches) {
         JsonArrayBuilder conceptsArr = Json.createArrayBuilder();
         for (ConceptsCache conceptsCache:conceptsCaches) {
-            JsonObjectBuilder blocksBld = jsonObjectBuilder();
-            blocksBld.add("concept-uri", conceptsCache.getConcepturi());
-            blocksBld.add("concept-json", conceptsCache.getConceptjson());
-            blocksBld.add("created-date", conceptsCache.getCreatedDate().toString());
+            JsonObjectBuilder blocksBld = json(conceptsCache);
             conceptsArr.add(blocksBld);
         }
         return conceptsArr;
+    }
+    public static JsonObjectBuilder json(ConceptsCache conceptsCaches) {
+        return jsonObjectBuilder()
+                .add("concept-uri", conceptsCaches.getConcepturi())
+                .add("concept-json", conceptsCaches.getConceptjson())
+                .add("created-date", conceptsCaches.getCreatedDate());
     }
 
     /**
