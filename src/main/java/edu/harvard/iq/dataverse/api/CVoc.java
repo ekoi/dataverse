@@ -19,7 +19,7 @@ import static edu.harvard.iq.dataverse.util.json.JsonPrinter.json;
 /**
  * Where the secure, setup API calls live.
  * 
- * @author michael
+ * @author Eko Indarto
  */
 @Stateless
 @Path("cvoc")
